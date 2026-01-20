@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { Package, TrendingUp, ClipboardList, AlertCircle } from 'lucide-react'
-
+import { Package, TrendingUp, ClipboardList, AlertCircle, Upload, Search } from 'lucide-react'
+  
 export default async function DashboardPage() {
   const supabase = await createClient()
   
