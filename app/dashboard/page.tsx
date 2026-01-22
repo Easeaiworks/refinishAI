@@ -4,41 +4,22 @@ import { Package, TrendingUp, ClipboardList, AlertCircle, Upload, Search } from 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  
-  // Get user profile
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('*, companies(*)')
-    .eq('id', user?.id)
-    .single()
-
-  // Get some basic stats
-  const { count: estimateCount } = await supabase
-    .from('estimates')
-    .select('*', { count: 'exact', head: true })
-    .eq('shop_id', profile?.company_id)
-
-  const { count: invoiceCount } = await supabase
-    .from('invoices')
-    .select('*', { count: 'exact', head: true })
-    .eq('shop_id', profile?.company_id)
-
-  const { count: productCount } = await supabase
-    .from('products')
-    .select('*', { count: 'exact', head: true })
+  // Temporarily simplified - no database queries
+  const userName = 'User'
+  const shopName = 'your shop'
+  const estimateCount = 0
+  const invoiceCount = 0
+  const productCount = 0
 
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {profile?.full_name || 'User'}!
+          Welcome back, {userName}!
         </h1>
         <p className="text-gray-600 mt-2">
-          Here&apos;s what&apos;s happening with {profile?.companies?.name || 'your shop'} today.
+          Here&apos;s what&apos;s happening with {shopName} today.
         </p>
       </div>
 
@@ -48,7 +29,7 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Active Estimates</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{estimateCount || 0}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{estimateCount}</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
               <ClipboardList className="w-6 h-6 text-blue-600" />
@@ -61,7 +42,7 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Completed Jobs</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{invoiceCount || 0}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{invoiceCount}</p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-green-600" />
@@ -74,7 +55,7 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Products Tracked</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{productCount || 0}</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{productCount}</p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
               <Package className="w-6 h-6 text-purple-600" />
