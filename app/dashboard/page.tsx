@@ -1,14 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { Package, TrendingUp, ClipboardList, AlertCircle, Upload, Search } from 'lucide-react'
 
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-
 export const dynamic = 'force-dynamic'
 
-export default async function Home() {
-  // ... rest of the code
-  export default async function DashboardPage() {
+export default async function DashboardPage() {
   const supabase = await createClient()
   
   // Get user profile
@@ -92,7 +87,7 @@ export default async function Home() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <a
+          
             href="/dashboard/upload"
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-center"
           >
@@ -101,7 +96,7 @@ export default async function Home() {
             <p className="text-sm text-gray-500">Import estimates/invoices</p>
           </a>
           
-          <a
+          
             href="/dashboard/vehicles"
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-center"
           >
@@ -110,7 +105,7 @@ export default async function Home() {
             <p className="text-sm text-gray-500">Decode VIN</p>
           </a>
           
-          <a
+          
             href="/dashboard/predictions"
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-center"
           >
@@ -119,7 +114,7 @@ export default async function Home() {
             <p className="text-sm text-gray-500">AI forecasts</p>
           </a>
           
-          <a
+          
             href="/dashboard/inventory"
             className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-center"
           >
@@ -140,7 +135,7 @@ export default async function Home() {
               To start using RefinishAI's predictive capabilities, upload your historical estimates and invoices.
               The system will analyze patterns and provide inventory forecasting recommendations.
             </p>
-            <a
+            
               href="/dashboard/upload"
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
