@@ -85,48 +85,4 @@ export default async function DashboardPage() {
           >
             <Search className="w-8 h-8 text-gray-400 mx-auto mb-2" />
             <p className="font-medium text-gray-900">Lookup Vehicle</p>
-            <p className="text-sm text-gray-500">Decode VIN</p>
-          </a>
-          
-          
-            href="/dashboard/predictions"
-            className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-center"
-          >
-            <TrendingUp className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="font-medium text-gray-900">View Predictions</p>
-            <p className="text-sm text-gray-500">AI forecasts</p>
-          </a>
-          
-          
-            href="/dashboard/inventory"
-            className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-center"
-          >
-            <Package className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="font-medium text-gray-900">Manage Inventory</p>
-            <p className="text-sm text-gray-500">Stock levels</p>
-          </a>
-        </div>
-      </div>
-
-      {/* Getting Started */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <div className="flex gap-4">
-          <AlertCircle className="w-6 h-6 text-blue-600 flex-shrink-0" />
-          <div>
-            <h3 className="font-bold text-blue-900 mb-2">Getting Started</h3>
-            <p className="text-blue-800 mb-4">
-              To start using RefinishAI&apos;s predictive capabilities, upload your historical estimates and invoices.
-              The system will analyze patterns and provide inventory forecasting recommendations.
-            </p>
-            
-              href="/dashboard/upload"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Upload Your First Data
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+            <p className="text-sm text-gray-500">
