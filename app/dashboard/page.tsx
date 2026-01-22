@@ -8,6 +8,7 @@ export default async function DashboardPage() {
   
   // Get user profile
   const { data: { user } } = await supabase.auth.getUser()
+  
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('*, companies(*)')
@@ -37,7 +38,7 @@ export default async function DashboardPage() {
           Welcome back, {profile?.full_name || 'User'}!
         </h1>
         <p className="text-gray-600 mt-2">
-          Here's what's happening with {profile?.companies?.name || 'your shop'} today.
+          Here&apos;s what&apos;s happening with {profile?.companies?.name || 'your shop'} today.
         </p>
       </div>
 
@@ -133,7 +134,7 @@ export default async function DashboardPage() {
           <div>
             <h3 className="font-bold text-blue-900 mb-2">Getting Started</h3>
             <p className="text-blue-800 mb-4">
-              To start using RefinishAI's predictive capabilities, upload your historical estimates and invoices.
+              To start using RefinishAI&apos;s predictive capabilities, upload your historical estimates and invoices.
               The system will analyze patterns and provide inventory forecasting recommendations.
             </p>
             
