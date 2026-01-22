@@ -1,7 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { Package, TrendingUp, ClipboardList, AlertCircle, Upload, Search } from 'lucide-react'
-  
-export default async function DashboardPage() {
+
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
+
+export default async function Home() {
+  // ... rest of the code
+  export default async function DashboardPage() {
   const supabase = await createClient()
   
   // Get user profile
