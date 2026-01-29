@@ -333,7 +333,7 @@ export default function CountsPage() {
     return matchesSearch && matchesCategory
   })
 
-  const categories = [...new Set(products.map(p => p.category))].sort()
+  const categories = Array.from(new Set(products.map(p => p.category))).sort()
 
   const isManager = ['manager', 'admin', 'super_admin'].includes(userRole)
 
