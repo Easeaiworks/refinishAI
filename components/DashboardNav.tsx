@@ -15,7 +15,8 @@ import {
   LogOut,
   Menu,
   X,
-  Building2
+  Building2,
+  BarChart3
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -40,6 +41,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Upload Data', href: '/dashboard/upload', icon: Upload, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Predictions', href: '/dashboard/predictions', icon: TrendingUp, roles: ['staff', 'manager', 'admin', 'super_admin'] },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Vehicle Lookup', href: '/dashboard/vehicles', icon: Search, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Inventory', href: '/dashboard/inventory', icon: Package, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Suppliers', href: '/dashboard/suppliers', icon: Building2, roles: ['manager', 'admin', 'super_admin'] },
