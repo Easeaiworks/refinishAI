@@ -3,18 +3,19 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  Upload, 
-  TrendingUp, 
-  Search, 
-  Package, 
-  ClipboardList, 
-  Users, 
-  Shield, 
+import {
+  LayoutDashboard,
+  Upload,
+  TrendingUp,
+  Search,
+  Package,
+  ClipboardList,
+  Users,
+  Shield,
   LogOut,
   Menu,
-  X
+  X,
+  Building2
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -41,6 +42,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
     { name: 'Predictions', href: '/dashboard/predictions', icon: TrendingUp, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Vehicle Lookup', href: '/dashboard/vehicles', icon: Search, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Inventory', href: '/dashboard/inventory', icon: Package, roles: ['staff', 'manager', 'admin', 'super_admin'] },
+    { name: 'Suppliers', href: '/dashboard/suppliers', icon: Building2, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Counts', href: '/dashboard/counts', icon: ClipboardList, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Users', href: '/dashboard/users', icon: Users, roles: ['admin', 'super_admin'] },
     { name: 'Super Admin', href: '/dashboard/admin', icon: Shield, roles: ['super_admin'] },
