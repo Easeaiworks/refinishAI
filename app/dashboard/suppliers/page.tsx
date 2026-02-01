@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Building2, Package, DollarSign, RefreshCw, Search, Filter,
   Plus, Settings, ExternalLink, CheckCircle, XCircle, AlertCircle,
-  ShoppingCart, TrendingDown, ArrowRight, Truck, Clock, Star
+  ShoppingCart, TrendingDown, ArrowRight, Truck, Clock, Star, Lock
 } from 'lucide-react'
 import {
   SUPPLIERS,
@@ -21,6 +21,15 @@ import {
 } from '@/lib/suppliers/supplier-service'
 import type { SupplierProduct, SupplierConfig, PriceQuote } from '@/lib/suppliers'
 
+interface CompanyVendor {
+  id: string
+  vendor_code: string
+  vendor_name: string
+  is_active: boolean
+  is_primary: boolean
+  discount_percent: number
+}
+
 export default function SuppliersPage() {
   const [supplierConfigs, setSupplierConfigs] = useState<SupplierConfig[]>([])
   const [products, setProducts] = useState<SupplierProduct[]>([])
@@ -33,6 +42,9 @@ export default function SuppliersPage() {
   const [comparingPrices, setComparingPrices] = useState(false)
   const [showConfigModal, setShowConfigModal] = useState(false)
   const [importing, setImporting] = useState<string | null>(null)
+  const [companyVendors, setCompanyVendors] = useState<CompanyVendor[]>([])
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string>('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -42,39 +54,100 @@ export default function SuppliersPage() {
   const initializeSuppliers = async () => {
     setLoading(true)
 
-    // Load supplier configs from database or use defaults
-    const { data: savedConfigs } = await supabase
-      .from('supplier_configs')
-      .select('*')
+    // Get user's company and role
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id, role')
+        .eq('id', user.id)
+        .single()
 
-    const configs: SupplierConfig[] = (savedConfigs && savedConfigs.length > 0)
-      ? savedConfigs as SupplierConfig[]
-      : Object.entries(SUPPLIER_INFO).map(([code, info]) => ({
-          id: code,
-          code: code as SupplierCode,
-          name: info.name,
-          enabled: ['PPG', 'AXALTA', 'SHERWIN_WILLIAMS'].includes(code),
-          logoUrl: `/logos/${code.toLowerCase()}.png`
-        }))
+      if (profile) {
+        setCompanyId(profile.company_id)
+        setUserRole(profile.role)
 
-    setSupplierConfigs(configs)
+        // Load company's allowed vendors
+        const { data: vendors } = await supabase
+          .from('company_vendors')
+          .select('*')
+          .eq('company_id', profile.company_id)
+          .eq('is_active', true)
 
-    // Load products from enabled suppliers
-    const enabledConfigs = configs.filter(c => c.enabled)
-    const allProducts = await getAllSupplierProducts(enabledConfigs)
-    setProducts(allProducts)
+        if (vendors) {
+          setCompanyVendors(vendors)
+
+          // Map vendor_code to SupplierCode
+          const vendorCodeMapping: Record<string, SupplierCode> = {
+            'ppg': 'PPG',
+            'axalta': 'AXALTA',
+            'sherwin_williams': 'SHERWIN_WILLIAMS',
+            'basf': 'BASF',
+            'dupont': 'DUPONT',
+            '3m': '3M',
+            'norton': 'NORTON',
+            'sata': 'SATA',
+            'devilbiss': 'DEVILBISS',
+            'generic': 'GENERIC'
+          }
+
+          // Build supplier configs based on allowed vendors only
+          const configs: SupplierConfig[] = Object.entries(SUPPLIER_INFO).map(([code, info]) => {
+            const vendorCode = code.toLowerCase()
+            const companyVendor = vendors.find(v => v.vendor_code === vendorCode)
+            const isAllowed = !!companyVendor
+
+            return {
+              id: code,
+              code: code as SupplierCode,
+              name: info.name,
+              enabled: isAllowed, // Only enable if company has access
+              isAllowed: isAllowed, // Track if allowed at all
+              discount: companyVendor?.discount_percent || 0,
+              isPrimary: companyVendor?.is_primary || false,
+              logoUrl: `/logos/${code.toLowerCase()}.png`
+            }
+          })
+
+          setSupplierConfigs(configs)
+
+          // Load products only from allowed suppliers
+          const enabledConfigs = configs.filter(c => c.enabled && c.isAllowed)
+          const allProducts = await getAllSupplierProducts(enabledConfigs)
+          setProducts(allProducts)
+        } else {
+          // No vendors assigned - show message
+          setSupplierConfigs(
+            Object.entries(SUPPLIER_INFO).map(([code, info]) => ({
+              id: code,
+              code: code as SupplierCode,
+              name: info.name,
+              enabled: false,
+              isAllowed: false,
+              logoUrl: `/logos/${code.toLowerCase()}.png`
+            }))
+          )
+        }
+      }
+    }
 
     setLoading(false)
   }
 
   const toggleSupplier = async (supplierId: string) => {
+    const config = supplierConfigs.find(c => c.id === supplierId)
+    if (!config?.isAllowed) {
+      // Can't enable a supplier the company doesn't have access to
+      return
+    }
+
     const updated = supplierConfigs.map(c =>
       c.id === supplierId ? { ...c, enabled: !c.enabled } : c
     )
     setSupplierConfigs(updated)
 
     // Reload products
-    const enabledConfigs = updated.filter(c => c.enabled)
+    const enabledConfigs = updated.filter(c => c.enabled && c.isAllowed)
     const allProducts = await getAllSupplierProducts(enabledConfigs)
     setProducts(allProducts)
   }
@@ -88,7 +161,7 @@ export default function SuppliersPage() {
       const quotes = await comparePrices(
         product.name.split(' ')[0], // Search by first word
         1,
-        supplierConfigs.filter(c => c.enabled)
+        supplierConfigs.filter(c => c.enabled && c.isAllowed)
       )
       setPriceQuotes(quotes)
     } catch (error) {
@@ -99,10 +172,16 @@ export default function SuppliersPage() {
   }
 
   const importToInventory = async (product: SupplierProduct) => {
+    if (!companyId) return
+
     setImporting(product.supplierSku)
 
     try {
-      const productData = formatProductForDB(product)
+      const productData = {
+        ...formatProductForDB(product),
+        company_id: companyId,
+        vendor_code: product.supplierCode.toLowerCase()
+      }
 
       const { error } = await supabase.from('products').insert([productData])
 
@@ -133,7 +212,20 @@ export default function SuppliersPage() {
     return matchesSearch && matchesCategory && matchesSupplier
   })
 
-  const enabledSupplierCount = supplierConfigs.filter(c => c.enabled).length
+  const enabledSupplierCount = supplierConfigs.filter(c => c.enabled && c.isAllowed).length
+  const allowedSupplierCount = supplierConfigs.filter(c => c.isAllowed).length
+
+  const getSupplierBgColor = (code: string) => {
+    const colors: Record<string, string> = {
+      PPG: 'bg-blue-500',
+      AXALTA: 'bg-red-500',
+      SHERWIN_WILLIAMS: 'bg-yellow-500',
+      BASF: 'bg-purple-500',
+      DUPONT: 'bg-orange-500',
+      '3M': 'bg-red-600',
+    }
+    return colors[code] || 'bg-gray-400'
+  }
 
   return (
     <div className="space-y-6">
@@ -141,48 +233,86 @@ export default function SuppliersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Paint Suppliers</h1>
-          <p className="text-gray-600 mt-2">Browse products and compare prices from major suppliers</p>
+          <p className="text-gray-600 mt-2">Browse products and compare prices from your authorized suppliers</p>
         </div>
-        <button
-          onClick={() => setShowConfigModal(true)}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-        >
-          <Settings className="w-4 h-4" />
-          Configure Suppliers
-        </button>
+        {allowedSupplierCount === 0 && (
+          <div className="flex items-center gap-2 px-4 py-2 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-lg">
+            <AlertCircle className="w-5 h-5" />
+            <span className="text-sm font-medium">No vendors assigned. Contact admin to enable suppliers.</span>
+          </div>
+        )}
       </div>
+
+      {/* Vendor Access Notice */}
+      {allowedSupplierCount > 0 && allowedSupplierCount < Object.keys(SUPPLIER_INFO).length && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+          <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-blue-900">Vendor Access Restricted</p>
+            <p className="text-sm text-blue-700 mt-1">
+              Your company has access to {allowedSupplierCount} vendor(s). Locked vendors require admin approval.
+              Contact your admin or super admin to request access to additional vendors.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Supplier Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {supplierConfigs.slice(0, 6).map(config => {
           const info = SUPPLIER_INFO[config.code as SupplierCode]
           const productCount = products.filter(p => p.supplierCode === config.code).length
+          const isLocked = !config.isAllowed
 
           return (
             <div
               key={config.id}
-              className={`bg-white rounded-lg shadow-sm border-2 p-4 transition-all ${
-                config.enabled
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 opacity-60'
+              className={`bg-white rounded-lg shadow-sm border-2 p-4 transition-all relative ${
+                isLocked
+                  ? 'border-gray-200 opacity-50 cursor-not-allowed'
+                  : config.enabled
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200'
               }`}
             >
+              {isLocked && (
+                <div className="absolute top-2 right-2">
+                  <Lock className="w-4 h-4 text-gray-400" />
+                </div>
+              )}
+
               <div className="flex items-center justify-between mb-2">
-                <Building2 className={`w-6 h-6 ${config.enabled ? 'text-blue-600' : 'text-gray-400'}`} />
-                <button
-                  onClick={() => toggleSupplier(config.id)}
-                  className={`w-8 h-5 rounded-full transition-colors ${
-                    config.enabled ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${
-                    config.enabled ? 'translate-x-3' : 'translate-x-0.5'
-                  }`} />
-                </button>
+                <div className={`w-8 h-8 rounded-lg ${getSupplierBgColor(config.code)} flex items-center justify-center text-white text-xs font-bold`}>
+                  {config.code.slice(0, 2)}
+                </div>
+                {!isLocked && (
+                  <button
+                    onClick={() => toggleSupplier(config.id)}
+                    className={`w-8 h-5 rounded-full transition-colors ${
+                      config.enabled ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${
+                      config.enabled ? 'translate-x-3' : 'translate-x-0.5'
+                    }`} />
+                  </button>
+                )}
               </div>
               <p className="font-semibold text-gray-900 text-sm">{config.name}</p>
-              {config.enabled && (
-                <p className="text-xs text-blue-600 mt-1">{productCount} products</p>
+              {isLocked ? (
+                <p className="text-xs text-gray-400 mt-1">Locked</p>
+              ) : config.enabled ? (
+                <div className="flex items-center gap-1 mt-1">
+                  <p className="text-xs text-blue-600">{productCount} products</p>
+                  {config.isPrimary && (
+                    <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 mt-1">Disabled</p>
+              )}
+              {config.discount && config.discount > 0 && (
+                <p className="text-xs text-green-600 mt-1">{config.discount}% discount</p>
               )}
             </div>
           )
@@ -194,8 +324,8 @@ export default function SuppliersPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Active Suppliers</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{enabledSupplierCount}</p>
+              <p className="text-sm text-gray-600">Authorized Vendors</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{allowedSupplierCount}</p>
             </div>
             <Building2 className="w-8 h-8 text-blue-500" />
           </div>
@@ -262,7 +392,7 @@ export default function SuppliersPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg"
           >
             <option value="all">All Suppliers</option>
-            {supplierConfigs.filter(c => c.enabled).map(config => (
+            {supplierConfigs.filter(c => c.enabled && c.isAllowed).map(config => (
               <option key={config.id} value={config.code}>{config.name}</option>
             ))}
           </select>
@@ -273,6 +403,15 @@ export default function SuppliersPage() {
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : allowedSupplierCount === 0 ? (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+          <Lock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Vendor Access</h3>
+          <p className="text-gray-600 mb-4">
+            Your company doesn't have any authorized vendors configured.
+            Contact your administrator to request vendor access.
+          </p>
         </div>
       ) : filteredProducts.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
@@ -287,251 +426,137 @@ export default function SuppliersPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProducts.map((product, index) => (
-            <div
-              key={`${product.supplierCode}-${product.supplierSku}-${index}`}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                    {SUPPLIER_INFO[product.supplierCode as SupplierCode]?.name || product.supplierCode}
-                  </span>
-                  <p className="font-mono text-xs text-gray-500 mt-1">{product.supplierSku}</p>
-                </div>
-                {product.inStock ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    <CheckCircle className="w-3 h-3" />
-                    In Stock
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                    <XCircle className="w-3 h-3" />
-                    Out
-                  </span>
-                )}
-              </div>
+          {filteredProducts.map((product, index) => {
+            const supplierConfig = supplierConfigs.find(c => c.code === product.supplierCode)
+            const discount = supplierConfig?.discount || 0
+            const discountedPrice = product.unitCost * (1 - discount / 100)
 
-              <h3 className="font-semibold text-gray-900 mb-2">{product.name}</h3>
-
-              <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                <span className="px-2 py-0.5 bg-gray-100 rounded">{product.category}</span>
-                <span>•</span>
-                <span>{product.unitType}</span>
-              </div>
-
-              <div className="flex items-end justify-between mb-4">
-                <div>
-                  <p className="text-2xl font-bold text-gray-900">${product.unitCost.toFixed(2)}</p>
-                  {product.msrp && product.msrp > product.unitCost && (
-                    <p className="text-sm text-gray-500 line-through">${product.msrp.toFixed(2)} MSRP</p>
+            return (
+              <div
+                key={`${product.supplierCode}-${product.supplierSku}-${index}`}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white ${getSupplierBgColor(product.supplierCode)}`}>
+                      {SUPPLIER_INFO[product.supplierCode as SupplierCode]?.name || product.supplierCode}
+                    </span>
+                    <p className="font-mono text-xs text-gray-500 mt-1">{product.supplierSku}</p>
+                  </div>
+                  {product.inStock ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      <CheckCircle className="w-3 h-3" />
+                      In Stock
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      <XCircle className="w-3 h-3" />
+                      Out
+                    </span>
                   )}
                 </div>
-                <div className="text-right text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {product.leadTimeDays} days
+
+                <h3 className="font-semibold text-gray-900 mb-2">{product.name}</h3>
+
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                  <span className="px-2 py-0.5 bg-gray-100 rounded">{product.category}</span>
+                  <span>•</span>
+                  <span>{product.unitType}</span>
+                </div>
+
+                <div className="flex items-end justify-between mb-4">
+                  <div>
+                    {discount > 0 ? (
+                      <>
+                        <p className="text-2xl font-bold text-green-600">${discountedPrice.toFixed(2)}</p>
+                        <p className="text-sm text-gray-400 line-through">${product.unitCost.toFixed(2)}</p>
+                        <p className="text-xs text-green-600">{discount}% company discount</p>
+                      </>
+                    ) : (
+                      <p className="text-2xl font-bold text-gray-900">${product.unitCost.toFixed(2)}</p>
+                    )}
+                    {product.msrp && product.msrp > product.unitCost && (
+                      <p className="text-sm text-gray-500 line-through">${product.msrp.toFixed(2)} MSRP</p>
+                    )}
+                  </div>
+                  <div className="text-right text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {product.leadTimeDays} days
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleComparePrice(product)}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  <TrendingDown className="w-4 h-4" />
-                  Compare
-                </button>
-                <button
-                  onClick={() => importToInventory(product)}
-                  disabled={importing === product.supplierSku}
-                  className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                  {importing === product.supplierSku ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4" />
-                  )}
-                  Add
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleComparePrice(product)}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    <TrendingDown className="w-4 h-4" />
+                    Compare
+                  </button>
+                  <button
+                    onClick={() => importToInventory(product)}
+                    disabled={importing === product.supplierSku}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                  >
+                    {importing === product.supplierSku ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                    Import
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
       {/* Price Comparison Modal */}
-      {selectedProduct && (
+      {selectedProduct && priceQuotes.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Price Comparison</h2>
+              <h2 className="text-lg font-bold text-gray-900">Price Comparison</h2>
               <button
                 onClick={() => {
                   setSelectedProduct(null)
                   setPriceQuotes([])
                 }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="text-gray-400 hover:text-gray-600"
               >
-                <XCircle className="w-5 h-5" />
+                ×
               </button>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <p className="font-semibold text-gray-900">{selectedProduct.name}</p>
-              <p className="text-sm text-gray-500">{selectedProduct.category}</p>
-            </div>
+            <p className="text-gray-600 mb-4">{selectedProduct.name}</p>
 
-            {comparingPrices ? (
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
-                <span className="ml-2 text-gray-600">Comparing prices...</span>
-              </div>
-            ) : priceQuotes.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                No comparable products found at other suppliers
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {priceQuotes.map((quote, index) => (
+            <div className="space-y-3">
+              {priceQuotes
+                .sort((a, b) => a.unitPrice - b.unitPrice)
+                .map((quote, idx) => (
                   <div
                     key={quote.supplierId}
-                    className={`p-4 rounded-lg border-2 ${
-                      index === 0 ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                    className={`p-3 rounded-lg border ${
+                      idx === 0 ? 'border-green-500 bg-green-50' : 'border-gray-200'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-gray-900">
-                            {SUPPLIER_INFO[quote.supplierId as SupplierCode]?.name || quote.supplierId}
-                          </p>
-                          {index === 0 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                              <Star className="w-3 h-3" />
-                              Best Price
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-500">SKU: {quote.productSku}</p>
+                        <p className="font-medium">{SUPPLIER_INFO[quote.supplierId as SupplierCode]?.name || quote.supplierId}</p>
+                        <p className="text-xs text-gray-500">{quote.productSku}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-gray-900">${quote.unitPrice.toFixed(2)}</p>
-                        {quote.discountApplied && quote.discountApplied > 0 && (
-                          <p className="text-sm text-green-600">-{quote.discountApplied}% discount</p>
+                        <p className="font-bold text-lg">${quote.unitPrice.toFixed(2)}</p>
+                        {idx === 0 && (
+                          <span className="text-xs text-green-600 font-medium">Best Price</span>
                         )}
                       </div>
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => {
-                  setSelectedProduct(null)
-                  setPriceQuotes([])
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Configure Suppliers Modal */}
-      {showConfigModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Supplier Configuration</h2>
-              <button
-                onClick={() => setShowConfigModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <XCircle className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-gray-600 mb-4">
-              Enable suppliers to browse their product catalogs and compare prices.
-              API credentials can be added for real-time pricing (contact suppliers for API access).
-            </p>
-
-            <div className="space-y-4">
-              {Object.entries(SUPPLIER_INFO).map(([code, info]) => {
-                const config = supplierConfigs.find(c => c.code === code)
-
-                return (
-                  <div
-                    key={code}
-                    className={`p-4 rounded-lg border-2 ${
-                      config?.enabled ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-semibold text-gray-900">{info.name}</h3>
-                          <button
-                            onClick={() => toggleSupplier(code)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              config?.enabled
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-200 text-gray-600'
-                            }`}
-                          >
-                            {config?.enabled ? 'Enabled' : 'Disabled'}
-                          </button>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">{info.description}</p>
-                        {info.website && (
-                          <a
-                            href={info.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-2"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            Visit Website
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {config?.enabled && code !== 'CUSTOM' && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-xs text-gray-500 mb-2">API Configuration (Optional)</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            placeholder="API Endpoint"
-                            className="px-3 py-1.5 text-sm border border-gray-300 rounded"
-                          />
-                          <input
-                            type="password"
-                            placeholder="API Key"
-                            className="px-3 py-1.5 text-sm border border-gray-300 rounded"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
-              <button
-                onClick={() => setShowConfigModal(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Done
-              </button>
             </div>
           </div>
         </div>

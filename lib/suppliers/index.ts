@@ -7,6 +7,9 @@ export interface SupplierConfig {
   apiEndpoint?: string
   apiKey?: string
   enabled: boolean
+  isAllowed?: boolean  // Whether company has access to this vendor
+  isPrimary?: boolean  // Whether this is the company's primary vendor
+  discount?: number    // Company-specific discount percentage
   lastSync?: string
   logoUrl?: string
 }
@@ -53,6 +56,11 @@ export const SUPPLIERS = {
   SHERWIN_WILLIAMS: 'SHERWIN_WILLIAMS',
   BASF: 'BASF',
   DUPONT: 'DUPONT',
+  '3M': '3M',
+  NORTON: 'NORTON',
+  SATA: 'SATA',
+  DEVILBISS: 'DEVILBISS',
+  GENERIC: 'GENERIC',
   CUSTOM: 'CUSTOM'
 } as const
 
@@ -84,6 +92,31 @@ export const SUPPLIER_INFO: Record<SupplierCode, { name: string; website: string
     name: 'DuPont Performance Coatings',
     website: 'https://www.dupont.com',
     description: 'High-performance refinish products'
+  },
+  '3M': {
+    name: '3M Automotive',
+    website: 'https://www.3m.com/automotive',
+    description: 'Abrasives, tapes, and specialty automotive products'
+  },
+  NORTON: {
+    name: 'Norton Abrasives',
+    website: 'https://www.nortonabrasives.com',
+    description: 'Professional grade abrasives and finishing products'
+  },
+  SATA: {
+    name: 'SATA GmbH',
+    website: 'https://www.sata.com',
+    description: 'Premium spray guns and finishing equipment'
+  },
+  DEVILBISS: {
+    name: 'DeVilbiss',
+    website: 'https://www.devilbissautomotive.com',
+    description: 'Spray finishing equipment and accessories'
+  },
+  GENERIC: {
+    name: 'Generic/Other',
+    website: '',
+    description: 'Generic or unbranded products'
   },
   CUSTOM: {
     name: 'Custom/Other',
