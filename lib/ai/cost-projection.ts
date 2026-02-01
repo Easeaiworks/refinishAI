@@ -378,7 +378,7 @@ export class CostProjectionEngine {
       })
     }
 
-    const totalCost = [...categoryMap.values()].reduce((sum, c) => sum + c.cost, 0)
+    const totalCost = Array.from(categoryMap.values()).reduce((sum, c) => sum + c.cost, 0)
     const scaleFactor = historicalJobs > 0 ? projectedJobs / historicalJobs : 1
 
     const breakdown: CategoryBreakdown[] = []

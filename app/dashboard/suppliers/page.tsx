@@ -47,8 +47,8 @@ export default function SuppliersPage() {
       .from('supplier_configs')
       .select('*')
 
-    const configs: SupplierConfig[] = savedConfigs?.length > 0
-      ? savedConfigs
+    const configs: SupplierConfig[] = (savedConfigs && savedConfigs.length > 0)
+      ? savedConfigs as SupplierConfig[]
       : Object.entries(SUPPLIER_INFO).map(([code, info]) => ({
           id: code,
           code: code as SupplierCode,

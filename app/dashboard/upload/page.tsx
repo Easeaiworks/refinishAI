@@ -306,11 +306,11 @@ export default function UploadPage() {
     const customerPattern = /(?:Customer|Name)[:\s]*([A-Za-z\s]+?)(?:\n|$)/gi
 
     // Extract all matches
-    const estimates = [...text.matchAll(estimatePattern)]
-    const vins = [...text.matchAll(vinPattern)]
-    const amounts = [...text.matchAll(amountPattern)]
-    const dates = [...text.matchAll(datePattern)]
-    const customers = [...text.matchAll(customerPattern)]
+    const estimates = Array.from(text.matchAll(estimatePattern))
+    const vins = Array.from(text.matchAll(vinPattern))
+    const amounts = Array.from(text.matchAll(amountPattern))
+    const dates = Array.from(text.matchAll(datePattern))
+    const customers = Array.from(text.matchAll(customerPattern))
 
     // Create rows from extracted data
     const maxRows = Math.max(estimates.length, vins.length, 1)
