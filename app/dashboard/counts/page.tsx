@@ -150,25 +150,26 @@ export default function CountsPage() {
         if (settingsData) {
           setSettings(settingsData)
         }
+
+        // Load products with stock info (filtered by company)
+        const { data: productsData } = await supabase
+          .from('products')
+          .select('*, inventory_stock(quantity)')
+          .eq('company_id', profile.company_id)
+          .order('category', { ascending: true })
+          .order('name', { ascending: true })
+
+        if (productsData) {
+          setProducts(productsData.map(p => ({
+            ...p,
+            current_stock: p.inventory_stock?.[0]?.quantity || 0
+          })))
+        }
       }
     }
 
     // Load counts
     await loadCounts()
-
-    // Load products with stock info
-    const { data: productsData } = await supabase
-      .from('products')
-      .select('*, inventory_stock(quantity)')
-      .order('category', { ascending: true })
-      .order('name', { ascending: true })
-
-    if (productsData) {
-      setProducts(productsData.map(p => ({
-        ...p,
-        current_stock: p.inventory_stock?.[0]?.quantity || 0
-      })))
-    }
 
     setLoading(false)
   }

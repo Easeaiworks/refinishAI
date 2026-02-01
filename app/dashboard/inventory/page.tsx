@@ -43,21 +43,45 @@ export default function InventoryPage() {
   const [showStockModal, setShowStockModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductWithStock | null>(null)
   const [adjustingProduct, setAdjustingProduct] = useState<ProductWithStock | null>(null)
+  const [companyId, setCompanyId] = useState<string | null>(null)
   const supabase = createClient()
 
   const categories = ['all', 'Paint', 'Primer', 'Clear Coat', 'Reducer', 'Hardener', 'Basecoat', 'Base Coat', 'Supplies', 'Abrasives', 'Consumables', 'Safety']
 
   useEffect(() => {
-    loadProducts()
+    loadInitialData()
   }, [])
 
-  const loadProducts = async () => {
+  const loadInitialData = async () => {
+    // Get user's company
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.company_id) {
+        setCompanyId(profile.company_id)
+        await loadProducts(profile.company_id)
+        return
+      }
+    }
+    setLoading(false)
+  }
+
+  const loadProducts = async (compId?: string) => {
+    const company = compId || companyId
+    if (!company) return
+
     setLoading(true)
 
-    // Load products
+    // Load products filtered by company
     const { data: productsData, error: productsError } = await supabase
       .from('products')
       .select('*')
+      .eq('company_id', company)
       .order('name')
 
     // Load stock levels
@@ -354,6 +378,7 @@ export default function InventoryPage() {
       {showAddModal && (
         <ProductModal
           product={editingProduct}
+          companyId={companyId}
           onClose={() => {
             setShowAddModal(false)
             setEditingProduct(null)
@@ -388,10 +413,12 @@ export default function InventoryPage() {
 // Product Modal Component
 function ProductModal({
   product,
+  companyId,
   onClose,
   onSave
 }: {
   product: ProductWithStock | null
+  companyId: string | null
   onClose: () => void
   onSave: () => void
 }) {
@@ -417,7 +444,9 @@ function ProductModal({
       if (product) {
         await supabase.from('products').update(formData).eq('id', product.id)
       } else {
-        const { data: newProduct } = await supabase.from('products').insert([formData]).select().single()
+        // Include company_id for new products
+        const insertData = companyId ? { ...formData, company_id: companyId } : formData
+        const { data: newProduct } = await supabase.from('products').insert([insertData]).select().single()
 
         // Create initial stock record for new product
         if (newProduct) {

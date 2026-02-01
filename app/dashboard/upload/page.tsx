@@ -77,11 +77,28 @@ export default function UploadPage() {
   const [showMapping, setShowMapping] = useState(false)
   const [uploadHistory, setUploadHistory] = useState<UploadHistory[]>([])
   const [dragActive, setDragActive] = useState(false)
+  const [companyId, setCompanyId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
+    loadUserCompany()
     loadUploadHistory()
   }, [])
+
+  const loadUserCompany = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.company_id) {
+        setCompanyId(profile.company_id)
+      }
+    }
+  }
 
   const loadUploadHistory = async () => {
     const { data } = await supabase
@@ -389,6 +406,11 @@ export default function UploadPage() {
             mappedData[targetField] = value
           }
         })
+
+        // Add company_id to all records
+        if (companyId) {
+          mappedData.company_id = companyId
+        }
 
         // Add default values
         if (dataType === 'estimate') {
