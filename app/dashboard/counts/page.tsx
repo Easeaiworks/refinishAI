@@ -1,12 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   ClipboardList, Plus, CheckCircle, Clock, AlertCircle, X,
   TrendingUp, TrendingDown, Search, Filter, ChevronRight,
-  Shield, AlertTriangle, Check, XCircle, RotateCcw
+  Shield, AlertTriangle, Check, XCircle, RotateCcw,
+  Printer, Upload, FileText, Camera, Scan, CheckSquare, Square,
+  Loader2, Download, Eye
 } from 'lucide-react'
+import { generateCountSheetHTML, type CountSheetProduct } from '@/lib/count-sheet/generator'
+import {
+  processCountSheetWithTableDetection,
+  preprocessImage,
+  validateOCRResults,
+  type OCRProgress,
+  type OCRProcessingResult
+} from '@/lib/count-sheet/ocr-processor'
 
 interface Product {
   id: string
@@ -15,6 +25,8 @@ interface Product {
   category: string
   unit_cost: number
   unit_type: string
+  current_stock?: number
+  location?: string
 }
 
 interface CountItem {
@@ -58,6 +70,8 @@ interface CompanySettings {
   require_manager_approval: boolean
 }
 
+type SelectionMode = 'all' | 'category' | 'specific'
+
 export default function CountsPage() {
   const [counts, setCounts] = useState<Count[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -75,7 +89,26 @@ export default function CountsPage() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [userRole, setUserRole] = useState<string>('staff')
   const [companyId, setCompanyId] = useState<string | null>(null)
+  const [companyName, setCompanyName] = useState<string>('')
 
+  // New count wizard state
+  const [wizardStep, setWizardStep] = useState(1)
+  const [countType, setCountType] = useState<string>('full')
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>('all')
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([])
+  const [productSearch, setProductSearch] = useState('')
+  const [countNotes, setCountNotes] = useState('')
+
+  // Print/Scan state
+  const [showPrintPreview, setShowPrintPreview] = useState(false)
+  const [printHtml, setPrintHtml] = useState('')
+  const [showScanModal, setShowScanModal] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState<OCRProgress | null>(null)
+  const [scanResults, setScanResults] = useState<OCRProcessingResult | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -98,6 +131,15 @@ export default function CountsPage() {
         setCompanyId(profile.company_id)
         setUserRole(profile.role || 'staff')
 
+        // Load company info
+        const { data: company } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', profile.company_id)
+          .single()
+
+        if (company) setCompanyName(company.name)
+
         // Load company settings
         const { data: settingsData } = await supabase
           .from('company_settings')
@@ -114,14 +156,19 @@ export default function CountsPage() {
     // Load counts
     await loadCounts()
 
-    // Load products
+    // Load products with stock info
     const { data: productsData } = await supabase
       .from('products')
-      .select('*')
+      .select('*, inventory_stock(quantity)')
       .order('category', { ascending: true })
       .order('name', { ascending: true })
 
-    if (productsData) setProducts(productsData)
+    if (productsData) {
+      setProducts(productsData.map(p => ({
+        ...p,
+        current_stock: p.inventory_stock?.[0]?.quantity || 0
+      })))
+    }
 
     setLoading(false)
   }
@@ -153,8 +200,28 @@ export default function CountsPage() {
     }
   }
 
-  const createNewCount = async (countType: string, notes: string) => {
+  // Get selected products based on selection mode
+  const getSelectedProductsForCount = (): Product[] => {
+    switch (selectionMode) {
+      case 'all':
+        return products
+      case 'category':
+        return products.filter(p => selectedCategories.includes(p.category))
+      case 'specific':
+        return products.filter(p => selectedProducts.includes(p.id))
+      default:
+        return products
+    }
+  }
+
+  const createNewCount = async () => {
     if (!companyId) return
+
+    const selectedProds = getSelectedProductsForCount()
+    if (selectedProds.length === 0) {
+      alert('Please select at least one item to count.')
+      return
+    }
 
     // Create count record
     const { data: newCount, error } = await supabase
@@ -162,7 +229,7 @@ export default function CountsPage() {
       .insert({
         company_id: companyId,
         count_type: countType,
-        notes: notes,
+        notes: countNotes,
         status: 'draft'
       })
       .select()
@@ -173,11 +240,11 @@ export default function CountsPage() {
       return
     }
 
-    // Create count items for all products
-    const countItemsToInsert = products.map(product => ({
+    // Create count items for selected products
+    const countItemsToInsert = selectedProds.map(product => ({
       count_id: newCount.id,
       product_id: product.id,
-      expected_quantity: 0, // Will be set based on current inventory
+      expected_quantity: product.current_stock || 0,
       unit_cost: product.unit_cost || 0,
       is_counted: false,
       requires_review: false,
@@ -186,7 +253,14 @@ export default function CountsPage() {
 
     await supabase.from('inventory_count_items').insert(countItemsToInsert)
 
+    // Reset wizard
     setShowNewCount(false)
+    setWizardStep(1)
+    setSelectionMode('all')
+    setSelectedCategories([])
+    setSelectedProducts([])
+    setCountNotes('')
+
     await loadCounts()
 
     // Open the count form
@@ -303,6 +377,115 @@ export default function CountsPage() {
     await loadCounts()
   }
 
+  // Generate printable count sheet
+  const generatePrintSheet = () => {
+    if (!activeCount) return
+
+    const sheetProducts: CountSheetProduct[] = countItems.map(item => ({
+      id: item.product_id,
+      sku: item.product?.sku || '',
+      name: item.product?.name || '',
+      category: item.product?.category || '',
+      unit_type: item.product?.unit_type || 'ea',
+      expected_quantity: item.expected_quantity,
+      location: ''
+    }))
+
+    const { html } = generateCountSheetHTML({
+      title: `Physical Count - ${new Date(activeCount.created_at).toLocaleDateString()}`,
+      countId: activeCount.id,
+      countDate: new Date(activeCount.created_at).toLocaleDateString(),
+      countType: activeCount.count_type as any,
+      companyName,
+      includeExpected: true,
+      groupByCategory: true,
+      includeBarcode: false,
+      products: sheetProducts
+    })
+
+    setPrintHtml(html)
+    setShowPrintPreview(true)
+  }
+
+  // Print the count sheet
+  const printCountSheet = () => {
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printHtml)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+    }
+  }
+
+  // Download as HTML file
+  const downloadCountSheet = () => {
+    const blob = new Blob([printHtml], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `count-sheet-${activeCount?.id.substring(0, 8)}.html`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Handle file upload for OCR scanning
+  const handleScanUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setScanning(true)
+    setScanProgress({ status: 'Preparing image...', progress: 0 })
+    setScanResults(null)
+
+    try {
+      // Preprocess image for better OCR
+      const { processedBlob } = await preprocessImage(file)
+
+      // Process with OCR
+      const expectedProducts = countItems.map(item => ({
+        sku: item.product?.sku || '',
+        name: item.product?.name || ''
+      }))
+
+      const results = await processCountSheetWithTableDetection(
+        processedBlob,
+        expectedProducts,
+        (progress) => setScanProgress(progress)
+      )
+
+      setScanResults(results)
+
+      // If successful, show results for review
+      if (results.success && results.items.length > 0) {
+        setScanProgress({ status: 'Scan complete!', progress: 100 })
+      }
+    } catch (error) {
+      console.error('Scan error:', error)
+      setScanProgress({ status: 'Scan failed', progress: 0 })
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  // Apply scanned results to count items
+  const applyScanResults = async () => {
+    if (!scanResults || !activeCount) return
+
+    for (const result of scanResults.items) {
+      const matchingItem = countItems.find(
+        item => item.product?.sku?.toUpperCase() === result.sku.toUpperCase()
+      )
+
+      if (matchingItem && matchingItem.id && result.countedQuantity !== null) {
+        await updateCountItem(matchingItem.id, result.countedQuantity)
+      }
+    }
+
+    setShowScanModal(false)
+    setScanResults(null)
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800'
@@ -344,6 +527,12 @@ export default function CountsPage() {
   const positiveVariances = countItems.filter(i => i.is_counted && (i.counted_quantity || 0) > i.expected_quantity).length
   const negativeVariances = countItems.filter(i => i.is_counted && (i.counted_quantity || 0) < i.expected_quantity).length
   const itemsRequiringReview = countItems.filter(i => i.requires_review).length
+
+  // Filter products for selection
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+    p.sku.toLowerCase().includes(productSearch.toLowerCase())
+  )
 
   return (
     <div className="space-y-6">
@@ -542,64 +731,288 @@ export default function CountsPage() {
         </div>
       )}
 
-      {/* New Count Modal */}
+      {/* New Count Wizard Modal */}
       {showNewCount && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Start New Count</h2>
-              <button onClick={() => setShowNewCount(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={(e) => {
-              e.preventDefault()
-              const form = e.target as HTMLFormElement
-              const countType = (form.elements.namedItem('countType') as HTMLSelectElement).value
-              const notes = (form.elements.namedItem('notes') as HTMLTextAreaElement).value
-              createNewCount(countType, notes)
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Count Type</label>
-                  <select name="countType" className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="full">Full Count</option>
-                    <option value="spot_check">Spot Check</option>
-                    <option value="cycle">Cycle Count</option>
-                  </select>
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Wizard Header */}
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Create New Count</h2>
+                <button onClick={() => {
+                  setShowNewCount(false)
+                  setWizardStep(1)
+                  setSelectionMode('all')
+                  setSelectedCategories([])
+                  setSelectedProducts([])
+                }} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Progress Steps */}
+              <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${wizardStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    wizardStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'
+                  }`}>1</div>
+                  <span className="text-sm font-medium">Type</span>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
-                  <textarea
-                    name="notes"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    placeholder="Add any notes about this count..."
-                  />
+                <div className={`flex-1 h-1 ${wizardStep >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                <div className={`flex items-center gap-2 ${wizardStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    wizardStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200'
+                  }`}>2</div>
+                  <span className="text-sm font-medium">Items</span>
                 </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> This will create a count sheet with all {products.length} products.
-                    Tolerance threshold is set to {settings.variance_tolerance_pct}%.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCount(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Start Count
-                  </button>
+                <div className={`flex-1 h-1 ${wizardStep >= 3 ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                <div className={`flex items-center gap-2 ${wizardStep >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    wizardStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200'
+                  }`}>3</div>
+                  <span className="text-sm font-medium">Review</span>
                 </div>
               </div>
-            </form>
+            </div>
+
+            {/* Wizard Content */}
+            <div className="flex-1 overflow-auto p-6">
+              {/* Step 1: Count Type */}
+              {wizardStep === 1 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Select Count Type</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { value: 'full', label: 'Full Count', desc: 'Count all inventory items' },
+                      { value: 'spot_check', label: 'Spot Check', desc: 'Quick verification of specific items' },
+                      { value: 'cycle', label: 'Cycle Count', desc: 'Regular scheduled count' },
+                      { value: 'category', label: 'Category Count', desc: 'Count specific categories' }
+                    ].map(type => (
+                      <button
+                        key={type.value}
+                        onClick={() => setCountType(type.value)}
+                        className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                          countType === type.value
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <p className="font-medium text-gray-900">{type.label}</p>
+                        <p className="text-sm text-gray-500 mt-1">{type.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Item Selection */}
+              {wizardStep === 2 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Select Items to Count</h3>
+
+                  {/* Selection Mode */}
+                  <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                    <button
+                      onClick={() => setSelectionMode('all')}
+                      className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                        selectionMode === 'all' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      All Items ({products.length})
+                    </button>
+                    <button
+                      onClick={() => setSelectionMode('category')}
+                      className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                        selectionMode === 'category' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      By Category
+                    </button>
+                    <button
+                      onClick={() => setSelectionMode('specific')}
+                      className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                        selectionMode === 'specific' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Specific Items
+                    </button>
+                  </div>
+
+                  {/* Category Selection */}
+                  {selectionMode === 'category' && (
+                    <div className="space-y-2 max-h-64 overflow-auto border border-gray-200 rounded-lg p-4">
+                      {categories.map(category => {
+                        const categoryProducts = products.filter(p => p.category === category)
+                        const isSelected = selectedCategories.includes(category)
+                        return (
+                          <label
+                            key={category}
+                            className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedCategories([...selectedCategories, category])
+                                } else {
+                                  setSelectedCategories(selectedCategories.filter(c => c !== category))
+                                }
+                              }}
+                              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="flex-1 font-medium text-gray-900">{category}</span>
+                            <span className="text-sm text-gray-500">{categoryProducts.length} items</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Specific Item Selection */}
+                  {selectionMode === 'specific' && (
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search products..."
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">{selectedProducts.length} selected</span>
+                        <button
+                          onClick={() => setSelectedProducts(
+                            selectedProducts.length === filteredProducts.length
+                              ? []
+                              : filteredProducts.map(p => p.id)
+                          )}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          {selectedProducts.length === filteredProducts.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+                      <div className="max-h-64 overflow-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+                        {filteredProducts.map(product => {
+                          const isSelected = selectedProducts.includes(product.id)
+                          return (
+                            <label
+                              key={product.id}
+                              className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedProducts([...selectedProducts, product.id])
+                                  } else {
+                                    setSelectedProducts(selectedProducts.filter(id => id !== product.id))
+                                  }
+                                }}
+                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-900">{product.name}</p>
+                                <p className="text-sm text-gray-500">{product.sku} • {product.category}</p>
+                              </div>
+                              <span className="text-sm text-gray-500">
+                                Stock: {product.current_stock || 0}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectionMode === 'all' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-blue-800">
+                        All <strong>{products.length}</strong> products will be included in this count.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3: Review & Notes */}
+              {wizardStep === 3 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Review & Add Notes</h3>
+
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Count Type:</span>
+                      <span className="font-medium capitalize">{countType.replace('_', ' ')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Items to Count:</span>
+                      <span className="font-medium">{getSelectedProductsForCount().length}</span>
+                    </div>
+                    {selectionMode === 'category' && selectedCategories.length > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Categories:</span>
+                        <span className="font-medium">{selectedCategories.join(', ')}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                    <textarea
+                      value={countNotes}
+                      onChange={(e) => setCountNotes(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Add any notes about this count..."
+                    />
+                  </div>
+
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-green-800 text-sm">
+                      <strong>Tip:</strong> After creating the count, you can print a count sheet for physical counting,
+                      then scan it back to automatically import the counts.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Wizard Footer */}
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-between">
+              <button
+                onClick={() => {
+                  if (wizardStep === 1) {
+                    setShowNewCount(false)
+                  } else {
+                    setWizardStep(wizardStep - 1)
+                  }
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100"
+              >
+                {wizardStep === 1 ? 'Cancel' : 'Back'}
+              </button>
+              <button
+                onClick={() => {
+                  if (wizardStep < 3) {
+                    setWizardStep(wizardStep + 1)
+                  } else {
+                    createNewCount()
+                  }
+                }}
+                disabled={
+                  (selectionMode === 'category' && selectedCategories.length === 0) ||
+                  (selectionMode === 'specific' && selectedProducts.length === 0)
+                }
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {wizardStep < 3 ? 'Continue' : 'Create Count'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -619,9 +1032,27 @@ export default function CountsPage() {
                     {activeCount.count_type?.replace('_', ' ')} • {activeCount.status.replace('_', ' ')}
                   </p>
                 </div>
-                <button onClick={() => setShowCountForm(false)} className="text-gray-400 hover:text-gray-600">
-                  <X className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Print Button */}
+                  <button
+                    onClick={generatePrintSheet}
+                    className="flex items-center gap-2 px-3 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print Sheet
+                  </button>
+                  {/* Scan Button */}
+                  <button
+                    onClick={() => setShowScanModal(true)}
+                    className="flex items-center gap-2 px-3 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    <Scan className="w-4 h-4" />
+                    Scan Sheet
+                  </button>
+                  <button onClick={() => setShowCountForm(false)} className="text-gray-400 hover:text-gray-600 ml-2">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
 
               {/* Summary Stats */}
@@ -811,6 +1242,200 @@ export default function CountsPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Preview Modal */}
+      {showPrintPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-900">Print Count Sheet</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={downloadCountSheet}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+                <button
+                  onClick={printCountSheet}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print
+                </button>
+                <button onClick={() => setShowPrintPreview(false)} className="text-gray-400 hover:text-gray-600 ml-2">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4 bg-gray-100">
+              <div className="bg-white shadow-lg mx-auto" style={{ maxWidth: '8.5in' }}>
+                <iframe
+                  srcDoc={printHtml}
+                  className="w-full border-0"
+                  style={{ height: '11in' }}
+                  title="Count Sheet Preview"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scan Modal */}
+      {showScanModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Scan Count Sheet</h3>
+              <button onClick={() => {
+                setShowScanModal(false)
+                setScanResults(null)
+                setScanProgress(null)
+              }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {!scanResults ? (
+              <>
+                <div className="mb-4">
+                  <p className="text-gray-600">
+                    Upload a photo or scan of your filled count sheet. The OCR will read both typed text and handwritten numbers.
+                  </p>
+                </div>
+
+                {/* Upload Area */}
+                <div
+                  onClick={() => !scanning && fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                    scanning ? 'border-gray-200 bg-gray-50' : 'border-gray-300 hover:border-blue-500'
+                  }`}
+                >
+                  {scanning ? (
+                    <div className="space-y-3">
+                      <Loader2 className="w-12 h-12 text-blue-600 mx-auto animate-spin" />
+                      <p className="text-gray-900 font-medium">{scanProgress?.status || 'Processing...'}</p>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${scanProgress?.progress || 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Camera className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-900 font-medium">Click to upload count sheet</p>
+                      <p className="text-sm text-gray-500 mt-1">Supports JPG, PNG, PDF</p>
+                    </>
+                  )}
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleScanUpload}
+                  className="hidden"
+                />
+
+                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">Tips for best results:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Use block numbers (0-9) when writing</li>
+                    <li>• Ensure good lighting and clear image</li>
+                    <li>• Keep the sheet flat and aligned</li>
+                    <li>• Review results before applying</li>
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Scan Results */}
+                <div className="space-y-4">
+                  {scanResults.success ? (
+                    <>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <p className="text-green-800">
+                          <strong>Scan complete!</strong> Found {scanResults.items.length} items in {(scanResults.processingTime / 1000).toFixed(1)}s
+                        </p>
+                        <p className="text-sm text-green-700 mt-1">
+                          {scanResults.highConfidenceCount} high confidence • {scanResults.lowConfidenceCount} need review
+                        </p>
+                      </div>
+
+                      {/* Results Table */}
+                      <div className="max-h-64 overflow-auto border border-gray-200 rounded-lg">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="text-left py-2 px-3">SKU</th>
+                              <th className="text-center py-2 px-3">Count</th>
+                              <th className="text-center py-2 px-3">Confidence</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {scanResults.items.map((item, idx) => (
+                              <tr key={idx} className="border-t border-gray-100">
+                                <td className="py-2 px-3 font-mono">{item.sku}</td>
+                                <td className="py-2 px-3 text-center font-medium">{item.countedQuantity}</td>
+                                <td className="py-2 px-3 text-center">
+                                  <span className={`px-2 py-0.5 rounded text-xs ${
+                                    item.confidence >= 80 ? 'bg-green-100 text-green-800' :
+                                    item.confidence >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {item.confidence}%
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            setScanResults(null)
+                            setScanProgress(null)
+                          }}
+                          className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                        >
+                          Scan Again
+                        </button>
+                        <button
+                          onClick={applyScanResults}
+                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                          Apply Results
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-red-800">
+                        <strong>Scan failed:</strong> {scanResults.errors.join(', ')}
+                      </p>
+                      <button
+                        onClick={() => {
+                          setScanResults(null)
+                          setScanProgress(null)
+                        }}
+                        className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
