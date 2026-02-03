@@ -3,18 +3,44 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Shield, Building2, Users, TrendingUp, Settings, AlertTriangle,
-  X, Check, Plus, Trash2, Edit2, Package, Lock, Unlock, Search,
-  ChevronDown, ChevronRight, Save
+  Shield, Building2, Users, TrendingUp,
+  X, Plus, Trash2, Edit2, Package, Search,
+  ChevronDown, ChevronRight, Mail, Key, UserPlus,
+  RefreshCw, Check, XCircle, Eye, EyeOff, Truck
 } from 'lucide-react'
 
 interface Company {
   id: string
   name: string
   email: string
+  phone?: string
+  address?: string
+  city?: string
+  state?: string
+  zip?: string
   subscription_status: string
   created_at: string
+  users?: UserProfile[]
   vendors?: CompanyVendor[]
+}
+
+interface UserProfile {
+  id: string
+  email: string
+  full_name: string
+  role: string
+  company_id: string
+  is_active: boolean
+  created_at: string
+}
+
+interface VendorCatalog {
+  code: string
+  name: string
+  website?: string
+  description?: string
+  product_categories?: string[]
+  is_active: boolean
 }
 
 interface CompanyVendor {
@@ -25,23 +51,14 @@ interface CompanyVendor {
   is_active: boolean
   is_primary: boolean
   discount_percent: number
-  account_number: string
-  notes: string
+  account_number?: string
 }
 
-interface VendorCatalog {
-  code: string
-  name: string
-  logo_url: string | null
-  website: string | null
-  description: string | null
-  product_categories: string[]
-  is_active: boolean
-}
-
-export default function AdminPage() {
+export default function SuperAdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([])
   const [vendorCatalog, setVendorCatalog] = useState<VendorCatalog[]>([])
+  const [companyVendors, setCompanyVendors] = useState<CompanyVendor[]>([])
   const [stats, setStats] = useState({
     totalCompanies: 0,
     activeCompanies: 0,
@@ -49,13 +66,21 @@ export default function AdminPage() {
     totalProducts: 0
   })
   const [loading, setLoading] = useState(true)
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
-  const [showVendorModal, setShowVendorModal] = useState(false)
-  const [companyVendors, setCompanyVendors] = useState<CompanyVendor[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCompany, setExpandedCompany] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>('')
-  const [userCompanyId, setUserCompanyId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'vendors'>('companies')
+
+  // Modals
+  const [showAddCompanyModal, setShowAddCompanyModal] = useState(false)
+  const [showAddUserModal, setShowAddUserModal] = useState(false)
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
+  const [showVendorModal, setShowVendorModal] = useState(false)
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null)
+  const [selectedCompanyForUser, setSelectedCompanyForUser] = useState<string>('')
+  const [selectedCompanyForVendor, setSelectedCompanyForVendor] = useState<Company | null>(null)
+
   const supabase = createClient()
 
   useEffect(() => {
@@ -65,7 +90,6 @@ export default function AdminPage() {
   const loadInitialData = async () => {
     setLoading(true)
 
-    // Get current user's role
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const { data: profile } = await supabase
@@ -76,21 +100,36 @@ export default function AdminPage() {
 
       if (profile) {
         setUserRole(profile.role)
-        setUserCompanyId(profile.company_id)
+        if (profile.role !== 'super_admin') {
+          setLoading(false)
+          return
+        }
       }
     }
 
     await loadData()
-    await loadVendorCatalog()
     setLoading(false)
   }
 
   const loadData = async () => {
-    // Load companies with their vendors
+    // Load companies
     const { data: companiesData } = await supabase
       .from('companies')
       .select('*')
       .order('created_at', { ascending: false })
+
+    // Load all users
+    const { data: usersData } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    // Load vendor catalog
+    const { data: catalogData } = await supabase
+      .from('vendor_catalog')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
 
     // Load all company vendors
     const { data: vendorsData } = await supabase
@@ -98,115 +137,28 @@ export default function AdminPage() {
       .select('*')
 
     // Load stats
-    const { count: userCount } = await supabase
-      .from('user_profiles')
-      .select('*', { count: 'exact', head: true })
-
     const { count: productCount } = await supabase
       .from('products')
       .select('*', { count: 'exact', head: true })
 
     if (companiesData) {
-      // Merge vendors with companies
-      const companiesWithVendors = companiesData.map(company => ({
+      const companiesWithData = companiesData.map(company => ({
         ...company,
+        users: usersData?.filter(u => u.company_id === company.id) || [],
         vendors: vendorsData?.filter(v => v.company_id === company.id) || []
       }))
 
-      setCompanies(companiesWithVendors)
+      setCompanies(companiesWithData)
+      setAllUsers(usersData || [])
+      setVendorCatalog(catalogData || [])
+      setCompanyVendors(vendorsData || [])
       setStats({
         totalCompanies: companiesData.length,
         activeCompanies: companiesData.filter(c => c.subscription_status === 'active').length,
-        totalUsers: userCount || 0,
+        totalUsers: usersData?.length || 0,
         totalProducts: productCount || 0
       })
     }
-  }
-
-  const loadVendorCatalog = async () => {
-    const { data } = await supabase
-      .from('vendor_catalog')
-      .select('*')
-      .eq('is_active', true)
-      .order('name')
-
-    if (data) setVendorCatalog(data)
-  }
-
-  const loadCompanyVendors = async (companyId: string) => {
-    const { data } = await supabase
-      .from('company_vendors')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('vendor_name')
-
-    if (data) setCompanyVendors(data)
-  }
-
-  const openVendorModal = async (company: Company) => {
-    setSelectedCompany(company)
-    await loadCompanyVendors(company.id)
-    setShowVendorModal(true)
-  }
-
-  const toggleVendor = async (vendorCode: string, vendorName: string, isCurrentlyActive: boolean) => {
-    if (!selectedCompany) return
-
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (isCurrentlyActive) {
-      // Remove vendor
-      await supabase
-        .from('company_vendors')
-        .delete()
-        .eq('company_id', selectedCompany.id)
-        .eq('vendor_code', vendorCode)
-    } else {
-      // Add vendor
-      await supabase
-        .from('company_vendors')
-        .insert({
-          company_id: selectedCompany.id,
-          vendor_code: vendorCode,
-          vendor_name: vendorName,
-          is_active: true,
-          added_by: user?.id
-        })
-    }
-
-    await loadCompanyVendors(selectedCompany.id)
-    await loadData()
-  }
-
-  const setPrimaryVendor = async (vendorCode: string) => {
-    if (!selectedCompany) return
-
-    // Clear all primary flags for this company
-    await supabase
-      .from('company_vendors')
-      .update({ is_primary: false })
-      .eq('company_id', selectedCompany.id)
-
-    // Set new primary
-    await supabase
-      .from('company_vendors')
-      .update({ is_primary: true })
-      .eq('company_id', selectedCompany.id)
-      .eq('vendor_code', vendorCode)
-
-    await loadCompanyVendors(selectedCompany.id)
-  }
-
-  const updateVendorDetails = async (vendorCode: string, field: string, value: any) => {
-    if (!selectedCompany) return
-
-    await supabase
-      .from('company_vendors')
-      .update({ [field]: value })
-      .eq('company_id', selectedCompany.id)
-      .eq('vendor_code', vendorCode)
-
-    await loadCompanyVendors(selectedCompany.id)
   }
 
   const getStatusColor = (status: string) => {
@@ -214,68 +166,131 @@ export default function AdminPage() {
       case 'active': return 'bg-green-100 text-green-800'
       case 'trial': return 'bg-blue-100 text-blue-800'
       case 'suspended': return 'bg-red-100 text-red-800'
+      case 'cancelled': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
-  const getVendorColor = (code: string) => {
-    const colors: Record<string, string> = {
-      ppg: 'bg-blue-500',
-      axalta: 'bg-red-500',
-      sherwin_williams: 'bg-yellow-500',
-      basf: 'bg-purple-500',
-      dupont: 'bg-orange-500',
-      '3m': 'bg-red-600',
-      norton: 'bg-green-600',
-      sata: 'bg-gray-600',
-      devilbiss: 'bg-indigo-500',
-      generic: 'bg-gray-400'
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'super_admin': return 'bg-red-100 text-red-800'
+      case 'admin': return 'bg-purple-100 text-purple-800'
+      case 'manager': return 'bg-blue-100 text-blue-800'
+      case 'staff': return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 text-gray-800'
     }
-    return colors[code] || 'bg-gray-400'
+  }
+
+  const updateCompanyStatus = async (companyId: string, status: string) => {
+    await supabase
+      .from('companies')
+      .update({ subscription_status: status })
+      .eq('id', companyId)
+    await loadData()
+  }
+
+  const updateUserRole = async (userId: string, role: string) => {
+    await supabase
+      .from('user_profiles')
+      .update({ role })
+      .eq('id', userId)
+    await loadData()
+  }
+
+  const toggleUserActive = async (userId: string, isActive: boolean) => {
+    await supabase
+      .from('user_profiles')
+      .update({ is_active: !isActive })
+      .eq('id', userId)
+    await loadData()
+  }
+
+  const deleteCompany = async (companyId: string) => {
+    if (!confirm('Are you sure? This will delete the company and all associated data.')) return
+    await supabase.from('companies').delete().eq('id', companyId)
+    await loadData()
+  }
+
+  const addVendorToCompany = async (companyId: string, vendorCode: string, vendorName: string, isPrimary: boolean = false) => {
+    await supabase.from('company_vendors').insert({
+      company_id: companyId,
+      vendor_code: vendorCode,
+      vendor_name: vendorName,
+      is_active: true,
+      is_primary: isPrimary,
+      discount_percent: 0
+    })
+    await loadData()
+  }
+
+  const removeVendorFromCompany = async (vendorId: string) => {
+    await supabase.from('company_vendors').delete().eq('id', vendorId)
+    await loadData()
+  }
+
+  const toggleVendorPrimary = async (vendorId: string, companyId: string) => {
+    // First, unset all primary flags for this company
+    await supabase
+      .from('company_vendors')
+      .update({ is_primary: false })
+      .eq('company_id', companyId)
+
+    // Then set this one as primary
+    await supabase
+      .from('company_vendors')
+      .update({ is_primary: true })
+      .eq('id', vendorId)
+
+    await loadData()
   }
 
   const filteredCompanies = companies.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.email.toLowerCase().includes(searchTerm.toLowerCase())
+    c.email?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const isSuperAdmin = userRole === 'super_admin'
+  const filteredUsers = allUsers.filter(u =>
+    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  if (userRole !== 'super_admin') {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You need Super Admin privileges to access this page.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-          <Shield className="w-6 h-6 text-red-600" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {isSuperAdmin ? 'Super Admin Panel' : 'Admin Settings'}
-          </h1>
-          <p className="text-gray-600">
-            {isSuperAdmin ? 'Platform-wide management and vendor assignments' : 'Company settings and configuration'}
-          </p>
-        </div>
-      </div>
-
-      {/* Warning */}
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+            <Shield className="w-6 h-6 text-red-600" />
+          </div>
           <div>
-            <p className="font-semibold text-red-900">
-              {isSuperAdmin ? 'Super Admin Access' : 'Admin Access'}
-            </p>
-            <p className="text-sm text-red-700 mt-1">
-              {isSuperAdmin
-                ? 'You have elevated permissions to manage all companies, users, and vendor assignments.'
-                : 'You can manage company settings. Vendor changes require Super Admin approval.'}
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900">Super Admin Panel</h1>
+            <p className="text-gray-600">Manage companies, users, and vendors</p>
           </div>
         </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowAddCompanyModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4" />
+            Add Company
+          </button>
+        </div>
       </div>
 
-      {/* Platform Stats */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
@@ -292,7 +307,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active Subs</p>
+              <p className="text-sm font-medium text-gray-600">Active Subscriptions</p>
               <p className="text-3xl font-bold text-green-600 mt-2">{stats.activeCompanies}</p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -316,8 +331,8 @@ export default function AdminPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Vendors Available</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{vendorCatalog.length}</p>
+              <p className="text-sm font-medium text-gray-600">Total Products</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalProducts}</p>
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
               <Package className="w-6 h-6 text-orange-600" />
@@ -326,314 +341,824 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="flex gap-4">
+          <button
+            onClick={() => setActiveTab('companies')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'companies'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Building2 className="w-4 h-4 inline-block mr-2" />
+            Companies ({companies.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'users'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Users className="w-4 h-4 inline-block mr-2" />
+            Users ({allUsers.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('vendors')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'vendors'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Truck className="w-4 h-4 inline-block mr-2" />
+            Vendor Assignments
+          </button>
+        </nav>
+      </div>
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           type="text"
-          placeholder="Search companies..."
+          placeholder={activeTab === 'companies' ? 'Search companies...' : activeTab === 'users' ? 'Search users...' : 'Search...'}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
-      {/* Companies List with Vendor Management */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Companies & Vendor Assignments</h2>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Lock className="w-4 h-4" />
-            <span>Vendor access is locked per company</span>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {filteredCompanies.map((company) => (
-              <div key={company.id} className="hover:bg-gray-50">
-                {/* Company Row */}
-                <div
-                  className="flex items-center justify-between p-4 cursor-pointer"
-                  onClick={() => setExpandedCompany(expandedCompany === company.id ? null : company.id)}
-                >
-                  <div className="flex items-center gap-4">
-                    <button className="text-gray-400">
-                      {expandedCompany === company.id ? (
-                        <ChevronDown className="w-5 h-5" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5" />
-                      )}
-                    </button>
-                    <div>
-                      <p className="font-medium text-gray-900">{company.name}</p>
-                      <p className="text-sm text-gray-500">{company.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    {/* Vendor Pills */}
-                    <div className="flex items-center gap-1">
-                      {company.vendors && company.vendors.length > 0 ? (
-                        company.vendors.slice(0, 4).map(v => (
-                          <span
-                            key={v.vendor_code}
-                            className={`px-2 py-1 rounded text-xs font-medium text-white ${getVendorColor(v.vendor_code)}`}
-                            title={v.vendor_name}
-                          >
-                            {v.vendor_code.toUpperCase().slice(0, 3)}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-gray-400">No vendors assigned</span>
-                      )}
-                      {company.vendors && company.vendors.length > 4 && (
-                        <span className="text-xs text-gray-500">+{company.vendors.length - 4}</span>
-                      )}
-                    </div>
-
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(company.subscription_status)}`}>
-                      {company.subscription_status}
-                    </span>
-
-                    {isSuperAdmin && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openVendorModal(company)
-                        }}
-                        className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        Manage Vendors
+      {/* Companies Tab */}
+      {activeTab === 'companies' && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : filteredCompanies.length === 0 ? (
+            <div className="text-center py-12">
+              <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">No companies found</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {filteredCompanies.map((company) => (
+                <div key={company.id} className="hover:bg-gray-50">
+                  <div
+                    className="flex items-center justify-between p-4 cursor-pointer"
+                    onClick={() => setExpandedCompany(expandedCompany === company.id ? null : company.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <button className="text-gray-400">
+                        {expandedCompany === company.id ? (
+                          <ChevronDown className="w-5 h-5" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5" />
+                        )}
                       </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Expanded Details */}
-                {expandedCompany === company.id && (
-                  <div className="px-4 pb-4 pl-14 bg-gray-50">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Joined</p>
-                        <p className="font-medium">{new Date(company.created_at).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Active Vendors</p>
-                        <p className="font-medium">{company.vendors?.filter(v => v.is_active).length || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Primary Vendor</p>
-                        <p className="font-medium">
-                          {company.vendors?.find(v => v.is_primary)?.vendor_name || 'None set'}
-                        </p>
+                        <p className="font-medium text-gray-900">{company.name}</p>
+                        <p className="text-sm text-gray-500">{company.email}</p>
                       </div>
                     </div>
 
-                    {company.vendors && company.vendors.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs text-gray-500 uppercase mb-2">Assigned Vendors</p>
-                        <div className="flex flex-wrap gap-2">
-                          {company.vendors.map(v => (
-                            <div
-                              key={v.vendor_code}
-                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
-                                v.is_primary ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
-                              }`}
-                            >
-                              <span className={`w-2 h-2 rounded-full ${getVendorColor(v.vendor_code)}`}></span>
-                              <span className="text-sm font-medium">{v.vendor_name}</span>
-                              {v.is_primary && (
-                                <span className="text-xs bg-blue-100 text-blue-700 px-1.5 rounded">Primary</span>
-                              )}
-                              {v.discount_percent > 0 && (
-                                <span className="text-xs text-green-600">{v.discount_percent}% off</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-gray-500">
+                        {company.users?.length || 0} users • {company.vendors?.length || 0} vendors
+                      </span>
 
-      {/* Vendor Catalog Reference */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Available Vendor Catalog</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {vendorCatalog.map(vendor => (
-            <div
-              key={vendor.code}
-              className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-            >
-              <div className={`w-10 h-10 rounded-lg ${getVendorColor(vendor.code)} flex items-center justify-center text-white font-bold text-sm mb-3`}>
-                {vendor.code.slice(0, 2).toUpperCase()}
-              </div>
-              <p className="font-medium text-gray-900">{vendor.name}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                {vendor.product_categories?.slice(0, 3).join(', ')}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+                      <select
+                        value={company.subscription_status}
+                        onChange={(e) => {
+                          e.stopPropagation()
+                          updateCompanyStatus(company.id, e.target.value)
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${getStatusColor(company.subscription_status)}`}
+                      >
+                        <option value="active">Active</option>
+                        <option value="trial">Trial</option>
+                        <option value="suspended">Suspended</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
 
-      {/* Vendor Management Modal */}
-      {showVendorModal && selectedCompany && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Manage Vendors</h2>
-                  <p className="text-gray-600 mt-1">{selectedCompany.name}</p>
-                </div>
-                <button
-                  onClick={() => setShowVendorModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-6">
-              <div className="space-y-3">
-                {vendorCatalog.map(vendor => {
-                  const companyVendor = companyVendors.find(cv => cv.vendor_code === vendor.code)
-                  const isActive = !!companyVendor
-
-                  return (
-                    <div
-                      key={vendor.code}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        isActive
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className={`w-12 h-12 rounded-lg ${getVendorColor(vendor.code)} flex items-center justify-center text-white font-bold`}>
-                            {vendor.code.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">{vendor.name}</p>
-                            <p className="text-sm text-gray-500">{vendor.description}</p>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {vendor.product_categories?.map(cat => (
-                                <span
-                                  key={cat}
-                                  className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded"
-                                >
-                                  {cat}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
+                      <div className="flex gap-1">
                         <button
-                          onClick={() => toggleVendor(vendor.code, vendor.name, isActive)}
-                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                            isActive
-                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingCompany(company)
+                            setShowAddCompanyModal(true)
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                          title="Edit"
                         >
-                          {isActive ? (
-                            <span className="flex items-center gap-2">
-                              <Lock className="w-4 h-4" />
-                              Remove Access
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-2">
-                              <Unlock className="w-4 h-4" />
-                              Grant Access
-                            </span>
-                          )}
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCompanyForVendor(company)
+                            setShowVendorModal(true)
+                          }}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                          title="Manage Vendors"
+                        >
+                          <Truck className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCompanyForUser(company.id)
+                            setShowAddUserModal(true)
+                          }}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                          title="Add User"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteCompany(company.id)
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+                    </div>
+                  </div>
 
-                      {/* Extra settings if active */}
-                      {isActive && companyVendor && (
-                        <div className="mt-4 pt-4 border-t border-green-200 grid grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Primary Vendor
-                            </label>
-                            <button
-                              onClick={() => setPrimaryVendor(vendor.code)}
-                              className={`w-full px-3 py-2 rounded-lg text-sm font-medium ${
-                                companyVendor.is_primary
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {companyVendor.is_primary ? '★ Primary' : 'Set as Primary'}
-                            </button>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Discount %
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="50"
-                              value={companyVendor.discount_percent || 0}
-                              onChange={(e) => updateVendorDetails(vendor.code, 'discount_percent', parseFloat(e.target.value) || 0)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Account #
-                            </label>
-                            <input
-                              type="text"
-                              value={companyVendor.account_number || ''}
-                              onChange={(e) => updateVendorDetails(vendor.code, 'account_number', e.target.value)}
-                              placeholder="Optional"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                            />
+                  {expandedCompany === company.id && (
+                    <div className="px-4 pb-4 pl-14 bg-gray-50">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Created</p>
+                          <p className="font-medium">{new Date(company.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Phone</p>
+                          <p className="font-medium">{company.phone || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Location</p>
+                          <p className="font-medium">{company.city && company.state ? `${company.city}, ${company.state}` : '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase">Vendors</p>
+                          <p className="font-medium">{company.vendors?.map(v => v.vendor_name).join(', ') || 'None assigned'}</p>
+                        </div>
+                      </div>
+
+                      {company.users && company.users.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs text-gray-500 uppercase mb-2">Users</p>
+                          <div className="space-y-2">
+                            {company.users.map(user => (
+                              <div
+                                key={user.id}
+                                className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                                    user.is_active ? 'bg-blue-500' : 'bg-gray-400'
+                                  }`}>
+                                    {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-gray-900">{user.full_name || 'No name'}</p>
+                                    <p className="text-sm text-gray-500">{user.email}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={user.role}
+                                    onChange={(e) => updateUserRole(user.id, e.target.value)}
+                                    className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${getRoleColor(user.role)}`}
+                                  >
+                                    <option value="staff">Staff</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="super_admin">Super Admin</option>
+                                  </select>
+                                  <button
+                                    onClick={() => toggleUserActive(user.id, user.is_active)}
+                                    className={`p-1.5 rounded ${user.is_active ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                                  >
+                                    {user.is_active ? <Check className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedUser(user)
+                                      setShowResetPasswordModal(true)
+                                    }}
+                                    className="p-1.5 text-orange-600 hover:bg-orange-50 rounded"
+                                  >
+                                    <Key className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
                     </div>
-                  )
-                })}
-              </div>
+                  )}
+                </div>
+              ))}
             </div>
+          )}
+        </div>
+      )}
 
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  {companyVendors.filter(v => v.is_active !== false).length} vendors assigned
-                </p>
-                <button
-                  onClick={() => {
-                    setShowVendorModal(false)
-                    loadData()
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Done
-                </button>
-              </div>
+      {/* Users Tab */}
+      {activeTab === 'users' && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Company</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Role</th>
+                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
+                <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map((user) => {
+                const company = companies.find(c => c.id === user.company_id)
+                return (
+                  <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                          user.is_active ? 'bg-blue-500' : 'bg-gray-400'
+                        }`}>
+                          {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{user.full_name || 'No name'}</p>
+                          <p className="text-sm text-gray-500">{user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600">{company?.name || 'No company'}</td>
+                    <td className="py-3 px-4">
+                      <select
+                        value={user.role}
+                        onChange={(e) => updateUserRole(user.id, e.target.value)}
+                        className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${getRoleColor(user.role)}`}
+                      >
+                        <option value="staff">Staff</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                        <option value="super_admin">Super Admin</option>
+                      </select>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => toggleUserActive(user.id, user.is_active)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user)
+                          setShowResetPasswordModal(true)
+                        }}
+                        className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg"
+                      >
+                        <Key className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Vendors Tab */}
+      {activeTab === 'vendors' && (
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="font-semibold text-blue-900 mb-2">Vendor Management</h3>
+            <p className="text-blue-800 text-sm">
+              Assign vendors to companies. Each company can have multiple vendors, with one marked as primary.
+              Click the truck icon next to any company above, or expand a company to see assigned vendors.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="font-semibold text-gray-900">Available Vendors</h3>
             </div>
+            <div className="divide-y divide-gray-100">
+              {vendorCatalog.map(vendor => (
+                <div key={vendor.code} className="p-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900">{vendor.name}</p>
+                    <p className="text-sm text-gray-500">{vendor.description}</p>
+                    {vendor.product_categories && (
+                      <div className="flex gap-1 mt-1">
+                        {vendor.product_categories.map(cat => (
+                          <span key={cat} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
+                            {cat}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {companyVendors.filter(cv => cv.vendor_code === vendor.code).length} companies
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="font-semibold text-gray-900">Company Vendor Assignments</h3>
+            </div>
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Company</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Assigned Vendors</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {companies.map(company => (
+                  <tr key={company.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4">
+                      <p className="font-medium text-gray-900">{company.name}</p>
+                    </td>
+                    <td className="py-3 px-4">
+                      {company.vendors && company.vendors.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {company.vendors.map(v => (
+                            <span
+                              key={v.id}
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                v.is_primary ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {v.vendor_name} {v.is_primary && '(Primary)'}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No vendors assigned</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => {
+                          setSelectedCompanyForVendor(company)
+                          setShowVendorModal(true)
+                        }}
+                        className="px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 rounded-lg font-medium"
+                      >
+                        Manage
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      {showAddCompanyModal && (
+        <CompanyModal
+          company={editingCompany}
+          onClose={() => {
+            setShowAddCompanyModal(false)
+            setEditingCompany(null)
+          }}
+          onSave={() => {
+            loadData()
+            setShowAddCompanyModal(false)
+            setEditingCompany(null)
+          }}
+        />
+      )}
+
+      {showAddUserModal && (
+        <AddUserModal
+          companies={companies}
+          defaultCompanyId={selectedCompanyForUser}
+          onClose={() => {
+            setShowAddUserModal(false)
+            setSelectedCompanyForUser('')
+          }}
+          onSave={() => {
+            loadData()
+            setShowAddUserModal(false)
+            setSelectedCompanyForUser('')
+          }}
+        />
+      )}
+
+      {showResetPasswordModal && selectedUser && (
+        <ResetPasswordModal
+          user={selectedUser}
+          onClose={() => {
+            setShowResetPasswordModal(false)
+            setSelectedUser(null)
+          }}
+        />
+      )}
+
+      {showVendorModal && selectedCompanyForVendor && (
+        <VendorManagementModal
+          company={selectedCompanyForVendor}
+          vendorCatalog={vendorCatalog}
+          onClose={() => {
+            setShowVendorModal(false)
+            setSelectedCompanyForVendor(null)
+          }}
+          onSave={() => {
+            loadData()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Company Modal
+function CompanyModal({ company, onClose, onSave }: { company: Company | null; onClose: () => void; onSave: () => void }) {
+  const [formData, setFormData] = useState({
+    name: company?.name || '',
+    email: company?.email || '',
+    phone: company?.phone || '',
+    address: company?.address || '',
+    city: company?.city || '',
+    state: company?.state || '',
+    zip: company?.zip || '',
+    subscription_status: company?.subscription_status || 'trial'
+  })
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      if (company) {
+        await supabase.from('companies').update(formData).eq('id', company.id)
+      } else {
+        await supabase.from('companies').insert([formData])
+      }
+      onSave()
+    } catch (error) {
+      alert('Error saving company')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">{company ? 'Edit Company' : 'Add New Company'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+            <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select value={formData.subscription_status} onChange={(e) => setFormData({ ...formData, subscription_status: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                <option value="trial">Trial</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400">{saving ? 'Saving...' : 'Save'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Add User Modal
+function AddUserModal({ companies, defaultCompanyId, onClose, onSave }: { companies: Company[]; defaultCompanyId: string; onClose: () => void; onSave: () => void }) {
+  const [formData, setFormData] = useState({ email: '', full_name: '', password: '', company_id: defaultCompanyId || '', role: 'staff' })
+  const [saving, setSaving] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const supabase = createClient()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: { data: { full_name: formData.full_name } }
+      })
+      if (authError) throw authError
+      if (authData.user) {
+        await supabase.from('user_profiles').update({
+          company_id: formData.company_id,
+          role: formData.role,
+          full_name: formData.full_name
+        }).eq('id', authData.user.id)
+      }
+      onSave()
+    } catch (error: any) {
+      setError(error.message || 'Error creating user')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">Add New User</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+            <input type="text" required value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} required minLength={6} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg pr-10" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+            <select required value={formData.company_id} onChange={(e) => setFormData({ ...formData, company_id: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+              <option value="">Select a company...</option>
+              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+            <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+              <option value="staff">Staff</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400">{saving ? 'Creating...' : 'Create User'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Reset Password Modal
+function ResetPasswordModal({ user, onClose }: { user: UserProfile; onClose: () => void }) {
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
+  const supabase = createClient()
+
+  const sendResetEmail = async () => {
+    setSending(true)
+    setError('')
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`
+      })
+      if (error) throw error
+      setSent(true)
+    } catch (error: any) {
+      setError(error.message || 'Error sending reset email')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Reset Password</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+        {sent ? (
+          <div className="text-center py-6">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-8 h-8 text-green-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Email Sent!</h3>
+            <p className="text-gray-600 mb-4">Reset link sent to <strong>{user.email}</strong></p>
+            <button onClick={onClose} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Done</button>
+          </div>
+        ) : (
+          <>
+            {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm mb-4">{error}</div>}
+            <div className="mb-6">
+              <p className="text-gray-600 mb-4">Send a password reset email to:</p>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="font-medium text-gray-900">{user.full_name || 'No name'}</p>
+                <p className="text-gray-600">{user.email}</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={sendResetEmail} disabled={sending} className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-400 flex items-center justify-center gap-2">
+                {sending ? <><RefreshCw className="w-4 h-4 animate-spin" />Sending...</> : <><Mail className="w-4 h-4" />Send Reset Email</>}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Vendor Management Modal
+function VendorManagementModal({ company, vendorCatalog, onClose, onSave }: { company: Company; vendorCatalog: VendorCatalog[]; onClose: () => void; onSave: () => void }) {
+  const [companyVendors, setCompanyVendors] = useState<CompanyVendor[]>(company.vendors || [])
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
+  const loadVendors = async () => {
+    const { data } = await supabase
+      .from('company_vendors')
+      .select('*')
+      .eq('company_id', company.id)
+    if (data) setCompanyVendors(data)
+  }
+
+  const addVendor = async (vendorCode: string, vendorName: string) => {
+    setSaving(true)
+    await supabase.from('company_vendors').insert({
+      company_id: company.id,
+      vendor_code: vendorCode,
+      vendor_name: vendorName,
+      is_active: true,
+      is_primary: companyVendors.length === 0,
+      discount_percent: 0
+    })
+    await loadVendors()
+    onSave()
+    setSaving(false)
+  }
+
+  const removeVendor = async (vendorId: string) => {
+    setSaving(true)
+    await supabase.from('company_vendors').delete().eq('id', vendorId)
+    await loadVendors()
+    onSave()
+    setSaving(false)
+  }
+
+  const setPrimary = async (vendorId: string) => {
+    setSaving(true)
+    await supabase.from('company_vendors').update({ is_primary: false }).eq('company_id', company.id)
+    await supabase.from('company_vendors').update({ is_primary: true }).eq('id', vendorId)
+    await loadVendors()
+    onSave()
+    setSaving(false)
+  }
+
+  const assignedCodes = companyVendors.map(v => v.vendor_code)
+  const availableVendors = vendorCatalog.filter(v => !assignedCodes.includes(v.code))
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Manage Vendors</h2>
+            <p className="text-gray-600">{company.name}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-6 space-y-6">
+          {/* Assigned Vendors */}
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-3">Assigned Vendors</h3>
+            {companyVendors.length === 0 ? (
+              <p className="text-gray-500 text-sm">No vendors assigned yet. Add vendors below.</p>
+            ) : (
+              <div className="space-y-2">
+                {companyVendors.map(vendor => (
+                  <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Truck className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-900">{vendor.vendor_name}</p>
+                        <p className="text-xs text-gray-500">{vendor.vendor_code}</p>
+                      </div>
+                      {vendor.is_primary && (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">Primary</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!vendor.is_primary && (
+                        <button
+                          onClick={() => setPrimary(vendor.id)}
+                          disabled={saving}
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Set Primary
+                        </button>
+                      )}
+                      <button
+                        onClick={() => removeVendor(vendor.id)}
+                        disabled={saving}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Available Vendors */}
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-3">Add Vendors</h3>
+            {availableVendors.length === 0 ? (
+              <p className="text-gray-500 text-sm">All available vendors have been assigned.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {availableVendors.map(vendor => (
+                  <button
+                    key={vendor.code}
+                    onClick={() => addVendor(vendor.code, vendor.name)}
+                    disabled={saving}
+                    className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
+                  >
+                    <Plus className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="font-medium text-gray-900">{vendor.name}</p>
+                      <p className="text-xs text-gray-500">{vendor.code}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <button onClick={onClose} className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800">
+            Done
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

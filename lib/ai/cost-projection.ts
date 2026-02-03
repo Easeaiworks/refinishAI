@@ -2,6 +2,7 @@
 // Analyzes historical data to predict future material costs and consumption
 
 import { SupabaseClient } from '@supabase/supabase-js'
+import { LaborRateService } from '@/lib/labor-rates'
 
 // Types
 export interface CostProjection {
@@ -77,9 +78,11 @@ export interface ConsumptionPattern {
 // Cost Projection Engine Class
 export class CostProjectionEngine {
   private supabase: SupabaseClient
+  private laborRateService: LaborRateService
 
   constructor(supabase: SupabaseClient) {
     this.supabase = supabase
+    this.laborRateService = new LaborRateService(supabase)
   }
 
   // Generate cost projections for a given period
@@ -99,12 +102,32 @@ export class CostProjectionEngine {
       this.getProducts(companyId)
     ])
 
-    // Calculate averages
+    // Calculate averages - use actual labor/material breakdown if available
     const avgJobsPerWeek = invoices.length / 13 // 90 days = ~13 weeks
-    const avgMaterialCostPerJob = invoices.reduce((sum, inv) =>
-      sum + (inv.material_cost || inv.total_amount * 0.4), 0) / Math.max(invoices.length, 1)
-    const avgLaborCostPerJob = invoices.reduce((sum, inv) =>
-      sum + (inv.labor_cost || inv.total_amount * 0.6), 0) / Math.max(invoices.length, 1)
+
+    // Calculate actual material and labor costs from invoices
+    // If invoices have detailed breakdown, use that; otherwise estimate from total
+    const avgMaterialCostPerJob = invoices.reduce((sum, inv) => {
+      if (inv.total_materials_cost && inv.total_materials_cost > 0) {
+        return sum + inv.total_materials_cost
+      }
+      if (inv.material_cost && inv.material_cost > 0) {
+        return sum + inv.material_cost
+      }
+      // Fallback: estimate materials as 35% of total (industry average)
+      return sum + (inv.total_amount * 0.35)
+    }, 0) / Math.max(invoices.length, 1)
+
+    const avgLaborCostPerJob = invoices.reduce((sum, inv) => {
+      if (inv.total_labor_cost && inv.total_labor_cost > 0) {
+        return sum + inv.total_labor_cost
+      }
+      if (inv.labor_cost && inv.labor_cost > 0) {
+        return sum + inv.labor_cost
+      }
+      // Fallback: estimate labor as 50% of total (industry average)
+      return sum + (inv.total_amount * 0.50)
+    }, 0) / Math.max(invoices.length, 1)
 
     // Estimate jobs for projection period
     const scheduledJobs = estimates.length
@@ -301,6 +324,34 @@ export class CostProjectionEngine {
     })
 
     return patterns.sort((a, b) => b.avgMonthlyUsage - a.avgMonthlyUsage)
+  }
+
+  // Calculate labor cost for an estimate using insurance rates
+  async calculateEstimateLaborCost(
+    companyId: string,
+    insuranceCompanyId: string,
+    laborHours: {
+      body?: number
+      refinish?: number
+      mechanical?: number
+      structural?: number
+      aluminum?: number
+      glass?: number
+    }
+  ) {
+    return this.laborRateService.calculateLaborCost(companyId, insuranceCompanyId, {
+      body_labor_hours: laborHours.body || 0,
+      refinish_labor_hours: laborHours.refinish || 0,
+      mechanical_labor_hours: laborHours.mechanical || 0,
+      structural_labor_hours: laborHours.structural || 0,
+      aluminum_labor_hours: laborHours.aluminum || 0,
+      glass_labor_hours: laborHours.glass || 0
+    })
+  }
+
+  // Get labor rates for a specific insurance company
+  async getInsuranceLaborRates(companyId: string, insuranceCompanyId: string) {
+    return this.laborRateService.getLaborRatesForInsurance(companyId, insuranceCompanyId)
   }
 
   // Private helper methods

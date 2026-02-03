@@ -16,7 +16,10 @@ import {
   Menu,
   X,
   Building2,
-  BarChart3
+  BarChart3,
+  DollarSign,
+  ShoppingCart,
+  Settings
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -37,17 +40,14 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
     router.refresh()
   }
 
+  // Simplified navigation - grouped logically
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Upload Data', href: '/dashboard/upload', icon: Upload, roles: ['manager', 'admin', 'super_admin'] },
-    { name: 'Predictions', href: '/dashboard/predictions', icon: TrendingUp, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
-    { name: 'Vehicle Lookup', href: '/dashboard/vehicles', icon: Search, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Inventory', href: '/dashboard/inventory', icon: Package, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Suppliers', href: '/dashboard/suppliers', icon: Building2, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Counts', href: '/dashboard/counts', icon: ClipboardList, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Users', href: '/dashboard/users', icon: Users, roles: ['admin', 'super_admin'] },
-    { name: 'Super Admin', href: '/dashboard/admin', icon: Shield, roles: ['super_admin'] },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
+    { name: 'Reorder', href: '/dashboard/reorder', icon: ShoppingCart, roles: ['manager', 'admin', 'super_admin'] },
+    { name: 'Settings', href: '/dashboard/company', icon: Settings, roles: ['admin', 'super_admin'] },
   ]
 
   const allowedNav = navigation.filter(item => 
