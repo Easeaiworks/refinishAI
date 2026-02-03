@@ -6,7 +6,7 @@ import {
   Shield, Building2, Users, TrendingUp,
   X, Plus, Trash2, Edit2, Package, Search,
   ChevronDown, ChevronRight, Mail, Key, UserPlus,
-  RefreshCw, Check, XCircle, Eye, EyeOff, Truck
+  RefreshCw, Check, XCircle, Eye, EyeOff, Truck, DollarSign
 } from 'lucide-react'
 
 interface Company {
@@ -54,11 +54,35 @@ interface CompanyVendor {
   account_number?: string
 }
 
+interface InsuranceCompany {
+  id: string
+  name: string
+  code: string
+  phone?: string
+  email?: string
+  website?: string
+  is_active: boolean
+}
+
+interface CompanyInsuranceRate {
+  id: string
+  company_id: string
+  insurance_company_id: string
+  is_drp: boolean
+  drp_code?: string
+  account_number?: string
+  contact_name?: string
+  insurance_company?: InsuranceCompany
+  company?: Company
+}
+
 export default function SuperAdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [allUsers, setAllUsers] = useState<UserProfile[]>([])
   const [vendorCatalog, setVendorCatalog] = useState<VendorCatalog[]>([])
   const [companyVendors, setCompanyVendors] = useState<CompanyVendor[]>([])
+  const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([])
+  const [companyInsuranceRates, setCompanyInsuranceRates] = useState<CompanyInsuranceRate[]>([])
   const [stats, setStats] = useState({
     totalCompanies: 0,
     activeCompanies: 0,
@@ -69,7 +93,7 @@ export default function SuperAdminPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCompany, setExpandedCompany] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'vendors'>('companies')
+  const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'vendors' | 'insurance'>('companies')
 
   // Modals
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false)
@@ -136,6 +160,18 @@ export default function SuperAdminPage() {
       .from('company_vendors')
       .select('*')
 
+    // Load insurance companies
+    const { data: insuranceData } = await supabase
+      .from('insurance_companies')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
+
+    // Load all company insurance rates
+    const { data: insuranceRatesData } = await supabase
+      .from('company_insurance_rates')
+      .select('*, insurance_company:insurance_companies(*)')
+
     // Load stats
     const { count: productCount } = await supabase
       .from('products')
@@ -152,6 +188,8 @@ export default function SuperAdminPage() {
       setAllUsers(usersData || [])
       setVendorCatalog(catalogData || [])
       setCompanyVendors(vendorsData || [])
+      setInsuranceCompanies(insuranceData || [])
+      setCompanyInsuranceRates(insuranceRatesData || [])
       setStats({
         totalCompanies: companiesData.length,
         activeCompanies: companiesData.filter(c => c.subscription_status === 'active').length,
@@ -376,6 +414,17 @@ export default function SuperAdminPage() {
           >
             <Truck className="w-4 h-4 inline-block mr-2" />
             Vendor Assignments
+          </button>
+          <button
+            onClick={() => setActiveTab('insurance')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'insurance'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <DollarSign className="w-4 h-4 inline-block mr-2" />
+            Insurance Rates
           </button>
         </nav>
       </div>
@@ -737,6 +786,115 @@ export default function SuperAdminPage() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Insurance Tab */}
+      {activeTab === 'insurance' && (
+        <div className="space-y-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h3 className="font-semibold text-green-900 mb-2">Insurance Rate Management</h3>
+            <p className="text-green-800 text-sm">
+              View all insurance companies in the system and see which shops have configured rates for each insurer.
+              Each shop manages their own rates through Settings → Insurance.
+            </p>
+          </div>
+
+          {/* Insurance Companies List */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="font-semibold text-gray-900">Insurance Companies ({insuranceCompanies.length})</h3>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {insuranceCompanies.map(insurer => {
+                const shopCount = companyInsuranceRates.filter(r => r.insurance_company_id === insurer.id).length
+                return (
+                  <div key={insurer.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <span className="text-green-700 font-semibold text-sm">{insurer.code}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{insurer.name}</p>
+                        {insurer.website && (
+                          <p className="text-xs text-gray-500">{insurer.website}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        shopCount > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {shopCount} {shopCount === 1 ? 'shop' : 'shops'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+              {insuranceCompanies.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <DollarSign className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>No insurance companies found in the system.</p>
+                  <p className="text-sm">Run the insurance migration to seed default insurers.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Company Insurance Configurations */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="font-semibold text-gray-900">Shop Insurance Configurations</h3>
+            </div>
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Company</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Insurance</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">DRP</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Account #</th>
+                </tr>
+              </thead>
+              <tbody>
+                {companyInsuranceRates.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-gray-500">
+                      No insurance configurations found. Shops can configure rates from their Settings page.
+                    </td>
+                  </tr>
+                ) : (
+                  companyInsuranceRates.map(rate => {
+                    const company = companies.find(c => c.id === rate.company_id)
+                    return (
+                      <tr key={rate.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-3 px-4">
+                          <p className="font-medium text-gray-900">{company?.name || 'Unknown'}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-gray-500">{rate.insurance_company?.code}</span>
+                            <span className="text-gray-900">{rate.insurance_company?.name}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {rate.is_drp ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              DRP
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-gray-600 text-sm">
+                          {rate.account_number || '—'}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
               </tbody>
             </table>
           </div>

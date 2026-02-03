@@ -51,7 +51,7 @@ export default function LaborRatesPage() {
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('company_id, role')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .single()
 
       if (!profile?.company_id) throw new Error('No company found')
