@@ -25,6 +25,7 @@ export default function LaborRatesPage() {
 
   const [selectedInsurer, setSelectedInsurer] = useState<string>('')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showCreateInsurerModal, setShowCreateInsurerModal] = useState(false)
   const [editingRates, setEditingRates] = useState<CompanyInsuranceRate | null>(null)
   const [rateInputs, setRateInputs] = useState<Record<string, number>>({})
   const [isDrp, setIsDrp] = useState(false)
@@ -34,6 +35,13 @@ export default function LaborRatesPage() {
   const [contactPhone, setContactPhone] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // New insurance company form
+  const [newInsurerName, setNewInsurerName] = useState('')
+  const [newInsurerCode, setNewInsurerCode] = useState('')
+  const [newInsurerPhone, setNewInsurerPhone] = useState('')
+  const [newInsurerEmail, setNewInsurerEmail] = useState('')
+  const [newInsurerWebsite, setNewInsurerWebsite] = useState('')
 
   useEffect(() => {
     loadData()
@@ -196,6 +204,59 @@ export default function LaborRatesPage() {
     }
   }
 
+  const openCreateInsurerModal = () => {
+    setNewInsurerName('')
+    setNewInsurerCode('')
+    setNewInsurerPhone('')
+    setNewInsurerEmail('')
+    setNewInsurerWebsite('')
+    setShowCreateInsurerModal(true)
+  }
+
+  const handleCreateInsurer = async () => {
+    if (!newInsurerName.trim()) {
+      setError('Insurance company name is required')
+      return
+    }
+
+    try {
+      setSaving(true)
+      setError(null)
+
+      // Generate code from name if not provided
+      const code = newInsurerCode.trim() || newInsurerName.substring(0, 4).toUpperCase().replace(/\s/g, '')
+
+      // Insert new insurance company
+      const { data, error: insertError } = await supabase
+        .from('insurance_companies')
+        .insert({
+          name: newInsurerName.trim(),
+          code: code,
+          phone: newInsurerPhone.trim() || null,
+          email: newInsurerEmail.trim() || null,
+          website: newInsurerWebsite.trim() || null,
+          is_active: true
+        })
+        .select()
+        .single()
+
+      if (insertError) throw insertError
+
+      setSuccess(`Insurance company "${newInsurerName}" created successfully`)
+      setShowCreateInsurerModal(false)
+
+      // Reload data and auto-select the new insurer
+      await loadData()
+      if (data) {
+        setSelectedInsurer(data.id)
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const getRateForType = (rate: CompanyInsuranceRate, typeCode: string): number | null => {
     const found = rate.rates?.find(r => r.labor_rate_type?.code === typeCode)
     return found ? found.hourly_rate : null
@@ -225,15 +286,26 @@ export default function LaborRatesPage() {
           </p>
         </div>
         {canManage && (
-          <button
-            onClick={openAddModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Insurance Company
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={openCreateInsurerModal}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Insurer
+            </button>
+            <button
+              onClick={openAddModal}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Configure Rates
+            </button>
+          </div>
         )}
       </div>
 
@@ -404,19 +476,34 @@ export default function LaborRatesPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Insurance Company
                   </label>
-                  <select
-                    value={selectedInsurer}
-                    onChange={(e) => setSelectedInsurer(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2"
-                  >
-                    <option value="">Select an insurance company...</option>
-                    {insuranceCompanies
-                      .filter(ic => !getConfiguredInsurerIds().has(ic.id))
-                      .map(ic => (
-                        <option key={ic.id} value={ic.id}>{ic.name}</option>
-                      ))
-                    }
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedInsurer}
+                      onChange={(e) => setSelectedInsurer(e.target.value)}
+                      className="flex-1 border rounded-lg px-3 py-2"
+                    >
+                      <option value="">Select an insurance company...</option>
+                      {insuranceCompanies
+                        .filter(ic => !getConfiguredInsurerIds().has(ic.id))
+                        .map(ic => (
+                          <option key={ic.id} value={ic.id}>{ic.name}</option>
+                        ))
+                      }
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeModal()
+                        openCreateInsurerModal()
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap"
+                    >
+                      + New
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Don't see your insurance company? Click "+ New" to add it.
+                  </p>
                 </div>
               )}
 
@@ -548,6 +635,104 @@ export default function LaborRatesPage() {
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {saving ? 'Saving...' : 'Save Labor Rates'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Insurance Company Modal */}
+      {showCreateInsurerModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-bold">Create New Insurance Company</h2>
+              <p className="text-gray-600 text-sm mt-1">Add a new insurance company to configure rates for.</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Company Name *
+                </label>
+                <input
+                  type="text"
+                  value={newInsurerName}
+                  onChange={(e) => setNewInsurerName(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2"
+                  placeholder="e.g., State Farm, GEICO"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Short Code
+                </label>
+                <input
+                  type="text"
+                  value={newInsurerCode}
+                  onChange={(e) => setNewInsurerCode(e.target.value.toUpperCase())}
+                  maxLength={6}
+                  className="w-full border rounded-lg px-3 py-2"
+                  placeholder="e.g., STFM (auto-generated if blank)"
+                />
+                <p className="text-xs text-gray-500 mt-1">2-6 character code for quick identification</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={newInsurerPhone}
+                    onChange={(e) => setNewInsurerPhone(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="(800) 555-0000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={newInsurerEmail}
+                    onChange={(e) => setNewInsurerEmail(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="claims@insurance.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Website
+                </label>
+                <input
+                  type="url"
+                  value={newInsurerWebsite}
+                  onChange={(e) => setNewInsurerWebsite(e.target.value)}
+                  className="w-full border rounded-lg px-3 py-2"
+                  placeholder="https://www.insurance.com"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowCreateInsurerModal(false)}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateInsurer}
+                disabled={saving || !newInsurerName.trim()}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {saving ? 'Creating...' : 'Create Insurance Company'}
               </button>
             </div>
           </div>
