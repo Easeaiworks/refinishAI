@@ -223,7 +223,8 @@ export function verifyCalculation(
   expectedResult: number
 ): { verified: boolean; calculatedResult: number; difference: number } {
   const formula = FORMULAS[formulaKey]
-  const calculatedResult = formula.calculate(...inputs)
+  // Use Function.prototype.apply to spread the inputs array
+  const calculatedResult = (formula.calculate as Function).apply(null, inputs)
   const difference = Math.abs(calculatedResult - expectedResult)
 
   return {
