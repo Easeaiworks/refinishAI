@@ -19,7 +19,8 @@ import {
   BarChart3,
   DollarSign,
   ShoppingCart,
-  Settings
+  Settings,
+  HelpCircle
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -100,6 +101,13 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
               <p className="text-sm font-medium text-gray-900">{profile?.full_name || user.email}</p>
               <p className="text-xs text-gray-500 capitalize">{profile?.role?.replace('_', ' ')}</p>
             </div>
+            <Link
+              href="/dashboard/help"
+              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Help & Documentation"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </Link>
             <button
               onClick={handleSignOut}
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -141,6 +149,18 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                   </Link>
                 )
               })}
+              <Link
+                href="/dashboard/help"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === '/dashboard/help'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <HelpCircle className="w-5 h-5" />
+                Help & Docs
+              </Link>
             </div>
           </div>
         )}
