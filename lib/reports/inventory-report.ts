@@ -84,7 +84,6 @@ export class InventoryReportService {
       .eq('is_active', true)
       .order('name')
 
-    if (filters.brand) query = query.eq('brand', filters.brand)
     if (filters.manufacturer) query = query.eq('manufacturer', filters.manufacturer)
     if (filters.productGroup) query = query.eq('product_group', filters.productGroup)
     if (filters.productLine) query = query.eq('product_line', filters.productLine)
@@ -167,7 +166,6 @@ export class InventoryReportService {
         sku: p.sku || '',
         name: p.name,
         category: p.category || 'Uncategorized',
-        brand: p.brand || undefined,
         manufacturer: p.manufacturer || undefined,
         productGroup: p.product_group || undefined,
         productLine: p.product_line || undefined,
@@ -319,31 +317,27 @@ export class InventoryReportService {
 
   // Fetch distinct filter options for dropdowns
   async getFilterOptions(companyId: string): Promise<{
-    brands: string[]
     manufacturers: string[]
     productGroups: string[]
     productLines: string[]
   }> {
     const { data: products } = await this.supabase
       .from('products')
-      .select('brand, manufacturer, product_group, product_line')
+      .select('manufacturer, product_group, product_line')
       .eq('company_id', companyId)
       .eq('is_active', true)
 
-    const brands = new Set<string>()
     const manufacturers = new Set<string>()
     const productGroups = new Set<string>()
     const productLines = new Set<string>()
 
     for (const p of products || []) {
-      if (p.brand) brands.add(p.brand)
       if (p.manufacturer) manufacturers.add(p.manufacturer)
       if (p.product_group) productGroups.add(p.product_group)
       if (p.product_line) productLines.add(p.product_line)
     }
 
     return {
-      brands: Array.from(brands).sort(),
       manufacturers: Array.from(manufacturers).sort(),
       productGroups: Array.from(productGroups).sort(),
       productLines: Array.from(productLines).sort()
@@ -357,7 +351,6 @@ export class InventoryReportService {
       'SKU',
       'Product Name',
       'Category',
-      'Brand',
       'Manufacturer',
       'Product Group',
       'Product Line',
@@ -376,7 +369,6 @@ export class InventoryReportService {
         item.sku,
         `"${item.name.replace(/"/g, '""')}"`,
         item.category,
-        item.brand || '',
         item.manufacturer || '',
         item.productGroup || '',
         item.productLine || '',
@@ -419,7 +411,7 @@ export class InventoryReportService {
         <td>${item.sku}</td>
         <td>${item.name}</td>
         <td>${item.category}</td>
-        <td>${item.brand || '—'}</td>
+        <td>${item.manufacturer || '—'}</td>
         <td style="text-align: right;">${item.quantityOnHand}</td>
         <td style="text-align: right;">$${item.unitCost.toFixed(2)}</td>
         <td style="text-align: right;"><strong>$${item.totalValue.toFixed(2)}</strong></td>
@@ -542,7 +534,7 @@ export class InventoryReportService {
         <th>SKU</th>
         <th>Product Name</th>
         <th>Category</th>
-        <th>Brand</th>
+        <th>Manufacturer</th>
         <th style="text-align: right;">On Hand</th>
         <th style="text-align: right;">Unit Cost</th>
         <th style="text-align: right;">Total Value</th>

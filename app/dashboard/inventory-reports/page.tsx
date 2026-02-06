@@ -43,7 +43,6 @@ export default function InventoryReportsPage() {
   const [report, setReport] = useState<InventoryReport | null>(null)
 
   // Filter options (populated from DB)
-  const [brandOptions, setBrandOptions] = useState<string[]>([])
   const [manufacturerOptions, setManufacturerOptions] = useState<string[]>([])
   const [groupOptions, setGroupOptions] = useState<string[]>([])
   const [lineOptions, setLineOptions] = useState<string[]>([])
@@ -54,7 +53,6 @@ export default function InventoryReportsPage() {
     startDate: getDefaultStartDate(),
     endDate: new Date().toISOString().split('T')[0],
     itemSearch: '',
-    brand: '',
     manufacturer: '',
     productGroup: '',
     productLine: '',
@@ -88,7 +86,6 @@ export default function InventoryReportsPage() {
         // Load filter options
         const service = createInventoryReportService(supabase)
         const options = await service.getFilterOptions(profile.company_id)
-        setBrandOptions(options.brands)
         setManufacturerOptions(options.manufacturers)
         setGroupOptions(options.productGroups)
         setLineOptions(options.productLines)
@@ -126,7 +123,6 @@ export default function InventoryReportsPage() {
       startDate: getDefaultStartDate(),
       endDate: new Date().toISOString().split('T')[0],
       itemSearch: '',
-      brand: '',
       manufacturer: '',
       productGroup: '',
       productLine: '',
@@ -263,7 +259,7 @@ export default function InventoryReportsPage() {
             Inventory Reports
           </h1>
           <p className="text-gray-600 mt-1">
-            Filter and analyze inventory by item, brand, group, manufacturer, or product line
+            Filter and analyze inventory by item, group, manufacturer, or product line
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -331,18 +327,6 @@ export default function InventoryReportsPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-            </div>
-            {/* Brand */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
-              <select
-                value={filters.brand}
-                onChange={e => setFilters({ ...filters, brand: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Brands</option>
-                {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
             </div>
             {/* Manufacturer */}
             <div>
@@ -506,7 +490,7 @@ export default function InventoryReportsPage() {
                       <SortHeader field="sku" label="SKU" />
                       <SortHeader field="name" label="Product Name" />
                       <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Category</th>
-                      <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Brand</th>
+                      <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Product Group</th>
                       <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Manufacturer</th>
                       <SortHeader field="quantityOnHand" label="On Hand" align="right" />
                       <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Unit Cost</th>
@@ -520,7 +504,7 @@ export default function InventoryReportsPage() {
                         <td className="py-3 px-3 text-sm font-mono text-gray-700">{item.sku}</td>
                         <td className="py-3 px-3 text-sm text-gray-900 font-medium">{item.name}</td>
                         <td className="py-3 px-3 text-sm text-gray-600">{item.category}</td>
-                        <td className="py-3 px-3 text-sm text-gray-600">{item.brand || '—'}</td>
+                        <td className="py-3 px-3 text-sm text-gray-600">{item.productGroup || '—'}</td>
                         <td className="py-3 px-3 text-sm text-gray-600">{item.manufacturer || '—'}</td>
                         <td className="py-3 px-3 text-sm text-right font-medium text-gray-900">{item.quantityOnHand}</td>
                         <td className="py-3 px-3 text-sm text-right text-gray-600">${item.unitCost.toFixed(2)}</td>

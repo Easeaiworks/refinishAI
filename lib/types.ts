@@ -36,7 +36,6 @@ export interface Product {
   unit_cost: number;
   supplier: string;
   lead_time_days: number;
-  brand?: string;
   manufacturer?: string;
   product_group?: string;
   product_line?: string;
@@ -152,7 +151,6 @@ export interface InventoryReportFilters {
   startDate: string;
   endDate: string;
   itemSearch?: string;
-  brand?: string;
   manufacturer?: string;
   productGroup?: string;
   productLine?: string;
@@ -164,7 +162,6 @@ export interface InventoryReportItem {
   sku: string;
   name: string;
   category: string;
-  brand?: string;
   manufacturer?: string;
   productGroup?: string;
   productLine?: string;
