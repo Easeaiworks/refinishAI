@@ -298,7 +298,7 @@ export class CalculationService {
     const auditEntry = createAuditEntry(
       'Inventory Valuation',
       'TOTAL_INVENTORY_VALUE',
-      { itemCount: items.length, items: items.map(i => `${i.quantity} @ $${i.unitCost}`) },
+      { itemCount: items.length, items: items.map(i => `${i.quantity} @ $${i.unitCost}`).join('; ') },
       totalValue,
       this.userId,
       this.companyId
