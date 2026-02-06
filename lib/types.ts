@@ -36,6 +36,10 @@ export interface Product {
   unit_cost: number;
   supplier: string;
   lead_time_days: number;
+  brand?: string;
+  manufacturer?: string;
+  product_group?: string;
+  product_line?: string;
   created_at: string;
   updated_at: string;
 }
@@ -140,4 +144,91 @@ export interface ConsumptionHistory {
   vehicle_id?: string;
   completion_date: string;
   created_at: string;
+}
+
+// ── Inventory Reporting Types ──────────────────────────────────────
+
+export interface InventoryReportFilters {
+  startDate: string;
+  endDate: string;
+  itemSearch?: string;
+  brand?: string;
+  manufacturer?: string;
+  productGroup?: string;
+  productLine?: string;
+  enableYoY?: boolean;
+}
+
+export interface InventoryReportItem {
+  productId: string;
+  sku: string;
+  name: string;
+  category: string;
+  brand?: string;
+  manufacturer?: string;
+  productGroup?: string;
+  productLine?: string;
+  quantityOnHand: number;
+  unitCost: number;
+  totalValue: number;
+  reorderPoint: number;
+  status: 'critical' | 'low' | 'adequate' | 'overstocked';
+  transactionCount: number;
+  lastTransactionDate?: string;
+  // Year-on-year comparison
+  priorYearQty?: number;
+  priorYearValue?: number;
+  qtyChange?: number;
+  valueChange?: number;
+  pctChange?: number;
+}
+
+export interface InventoryReportSummary {
+  totalSKUs: number;
+  totalQuantity: number;
+  totalInventoryValue: number;
+  criticalItems: number;
+  lowStockItems: number;
+  countsCompleted: number;
+  netAdjustmentValue: number;
+}
+
+export interface CountHistoryEntry {
+  id: string;
+  countDate: string;
+  countType: string;
+  status: string;
+  itemsCounted: number;
+  varianceCount: number;
+  totalVarianceValue: number;
+  countedBy: string;
+  countedByName?: string;
+  verifiedBy?: string;
+  verifiedByName?: string;
+}
+
+export interface AdjustmentEntry {
+  id: string;
+  countId?: string;
+  productId: string;
+  productName: string;
+  productSku: string;
+  adjustmentType: string;
+  previousQuantity: number;
+  newQuantity: number;
+  adjustmentQuantity: number;
+  unitCost: number;
+  adjustmentValue: number;
+  adjustedBy: string;
+  adjustedByName?: string;
+  reason?: string;
+  createdAt: string;
+}
+
+export interface UserAdjustmentSummary {
+  userId: string;
+  userName: string;
+  adjustmentCount: number;
+  totalValue: number;
+  adjustments: AdjustmentEntry[];
 }

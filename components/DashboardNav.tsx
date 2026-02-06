@@ -20,7 +20,8 @@ import {
   DollarSign,
   ShoppingCart,
   Settings,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -48,6 +49,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
     { name: 'Counts', href: '/dashboard/counts', icon: ClipboardList, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Reorder', href: '/dashboard/reorder', icon: ShoppingCart, roles: ['manager', 'admin', 'super_admin'] },
+    { name: 'Reports', href: '/dashboard/inventory-reports', icon: FileText, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Insurance', href: '/dashboard/labor-rates', icon: DollarSign, roles: ['admin', 'super_admin'] },
     { name: 'Settings', href: '/dashboard/company', icon: Settings, roles: ['admin', 'super_admin'] },
   ]
