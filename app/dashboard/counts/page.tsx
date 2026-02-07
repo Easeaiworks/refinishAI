@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { PRODUCT_CATEGORIES } from '@/lib/constants'
+// Categories are now built dynamically from actual company products
 import {
   ClipboardList, Plus, CheckCircle, Clock, AlertCircle, X,
   TrendingUp, TrendingDown, Search, Filter, ChevronRight,
@@ -155,7 +155,7 @@ export default function CountsPage() {
         // Load products with stock info (filtered by company)
         const { data: productsData } = await supabase
           .from('products')
-          .select('*, inventory_stock(quantity)')
+          .select('*, inventory_stock(quantity_on_hand)')
           .eq('company_id', profile.company_id)
           .order('category', { ascending: true })
           .order('name', { ascending: true })
@@ -163,7 +163,7 @@ export default function CountsPage() {
         if (productsData) {
           setProducts(productsData.map(p => ({
             ...p,
-            current_stock: p.inventory_stock?.[0]?.quantity || 0
+            current_stock: p.inventory_stock?.[0]?.quantity_on_hand || 0
           })))
         }
       }
@@ -518,7 +518,8 @@ export default function CountsPage() {
     return matchesSearch && matchesCategory
   })
 
-  const categories = [...PRODUCT_CATEGORIES]
+  // Build categories dynamically from actual products loaded for this company
+  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort()
 
   const isManager = ['manager', 'admin', 'super_admin'].includes(userRole)
 
@@ -785,14 +786,17 @@ export default function CountsPage() {
                   <h3 className="font-semibold text-gray-900">Select Count Type</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {[
-                      { value: 'full', label: 'Full Count', desc: 'Count all inventory items' },
-                      { value: 'spot_check', label: 'Spot Check', desc: 'Quick verification of specific items' },
-                      { value: 'cycle', label: 'Cycle Count', desc: 'Regular scheduled count' },
-                      { value: 'category', label: 'Category Count', desc: 'Count specific categories' }
+                      { value: 'full', label: 'Full Count', desc: 'Count all inventory items', mode: 'all' as SelectionMode },
+                      { value: 'spot_check', label: 'Spot Check', desc: 'Quick verification of specific items', mode: 'specific' as SelectionMode },
+                      { value: 'cycle', label: 'Cycle Count', desc: 'Regular scheduled count', mode: 'all' as SelectionMode },
+                      { value: 'category', label: 'Category Count', desc: 'Count specific categories', mode: 'category' as SelectionMode }
                     ].map(type => (
                       <button
                         key={type.value}
-                        onClick={() => setCountType(type.value)}
+                        onClick={() => {
+                          setCountType(type.value)
+                          setSelectionMode(type.mode)
+                        }}
                         className={`p-4 border-2 rounded-lg text-left transition-colors ${
                           countType === type.value
                             ? 'border-blue-600 bg-blue-50'
