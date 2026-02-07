@@ -16,7 +16,8 @@ export default async function DashboardPage() {
 
   const companyId = profile?.company_id
   const userName = profile?.full_name || 'User'
-  const shopName = profile?.companies?.name || 'your shop'
+  const companiesData = profile?.companies as any
+  const shopName = Array.isArray(companiesData) ? companiesData[0]?.name : companiesData?.name || 'your shop'
 
   // Fetch all counts in parallel
   const [
