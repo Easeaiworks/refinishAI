@@ -37,7 +37,7 @@ export interface Product {
   supplier: string;
   lead_time_days: number;
   manufacturer?: string;
-  product_group?: string;
+  // product_group removed — use 'category' instead
   product_line?: string;
   created_at: string;
   updated_at: string;
@@ -151,8 +151,8 @@ export interface InventoryReportFilters {
   startDate: string;
   endDate: string;
   itemSearch?: string;
+  category?: string;
   manufacturer?: string;
-  productGroup?: string;
   productLine?: string;
   enableYoY?: boolean;
 }
@@ -163,7 +163,6 @@ export interface InventoryReportItem {
   name: string;
   category: string;
   manufacturer?: string;
-  productGroup?: string;
   productLine?: string;
   quantityOnHand: number;
   unitCost: number;

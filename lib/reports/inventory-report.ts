@@ -84,8 +84,8 @@ export class InventoryReportService {
       .eq('is_active', true)
       .order('name')
 
+    if (filters.category) query = query.eq('category', filters.category)
     if (filters.manufacturer) query = query.eq('manufacturer', filters.manufacturer)
-    if (filters.productGroup) query = query.eq('product_group', filters.productGroup)
     if (filters.productLine) query = query.eq('product_line', filters.productLine)
     if (filters.itemSearch) {
       query = query.or(`name.ilike.%${filters.itemSearch}%,sku.ilike.%${filters.itemSearch}%`)
@@ -167,7 +167,7 @@ export class InventoryReportService {
         name: p.name,
         category: p.category || 'Uncategorized',
         manufacturer: p.manufacturer || undefined,
-        productGroup: p.product_group || undefined,
+        // product_group removed — category is used instead
         productLine: p.product_line || undefined,
         quantityOnHand: qty,
         unitCost: cost,
@@ -317,29 +317,29 @@ export class InventoryReportService {
 
   // Fetch distinct filter options for dropdowns
   async getFilterOptions(companyId: string): Promise<{
+    categories: string[]
     manufacturers: string[]
-    productGroups: string[]
     productLines: string[]
   }> {
     const { data: products } = await this.supabase
       .from('products')
-      .select('manufacturer, product_group, product_line')
+      .select('category, manufacturer, product_line')
       .eq('company_id', companyId)
       .eq('is_active', true)
 
+    const categories = new Set<string>()
     const manufacturers = new Set<string>()
-    const productGroups = new Set<string>()
     const productLines = new Set<string>()
 
     for (const p of products || []) {
+      if (p.category) categories.add(p.category)
       if (p.manufacturer) manufacturers.add(p.manufacturer)
-      if (p.product_group) productGroups.add(p.product_group)
       if (p.product_line) productLines.add(p.product_line)
     }
 
     return {
+      categories: Array.from(categories).sort(),
       manufacturers: Array.from(manufacturers).sort(),
-      productGroups: Array.from(productGroups).sort(),
       productLines: Array.from(productLines).sort()
     }
   }
@@ -352,7 +352,6 @@ export class InventoryReportService {
       'Product Name',
       'Category',
       'Manufacturer',
-      'Product Group',
       'Product Line',
       'On Hand',
       'Unit Cost',
@@ -370,7 +369,6 @@ export class InventoryReportService {
         `"${item.name.replace(/"/g, '""')}"`,
         item.category,
         item.manufacturer || '',
-        item.productGroup || '',
         item.productLine || '',
         item.quantityOnHand,
         item.unitCost.toFixed(2),
