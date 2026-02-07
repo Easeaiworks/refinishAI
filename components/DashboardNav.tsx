@@ -50,9 +50,8 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
     { name: 'Estimates', href: '/dashboard/estimates', icon: FileText, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Invoices', href: '/dashboard/invoices', icon: Receipt, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Counts', href: '/dashboard/counts', icon: ClipboardList, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
+    { name: 'Analytics & Reports', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Reorder', href: '/dashboard/reorder', icon: ShoppingCart, roles: ['manager', 'admin', 'super_admin'] },
-    { name: 'Reports', href: '/dashboard/inventory-reports', icon: FileText, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Insurance', href: '/dashboard/labor-rates', icon: DollarSign, roles: ['admin', 'super_admin'] },
     { name: 'Settings', href: '/dashboard/company', icon: Settings, roles: ['admin', 'super_admin'] },
   ]
