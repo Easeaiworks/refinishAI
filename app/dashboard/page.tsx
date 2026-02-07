@@ -4,7 +4,7 @@ import { Package, TrendingUp, ClipboardList, AlertCircle, Upload, Search } from 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Get user and company_id
   const { data: { user } } = await supabase.auth.getUser()
