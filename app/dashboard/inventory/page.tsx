@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { PRODUCT_CATEGORIES } from '@/lib/constants'
 import {
   Package,
   Plus,
@@ -46,7 +47,7 @@ export default function InventoryPage() {
   const [companyId, setCompanyId] = useState<string | null>(null)
   const supabase = createClient()
 
-  const categories = ['all', 'Paint', 'Primer', 'Clear Coat', 'Reducer', 'Hardener', 'Basecoat', 'Base Coat', 'Supplies', 'Abrasives', 'Consumables', 'Safety']
+  const categories = ['all', ...PRODUCT_CATEGORIES]
 
   useEffect(() => {
     loadInitialData()
@@ -509,17 +510,9 @@ function ProductModal({
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                <option>Paint</option>
-                <option>Primer</option>
-                <option>Clear Coat</option>
-                <option>Reducer</option>
-                <option>Hardener</option>
-                <option>Basecoat</option>
-                <option>Base Coat</option>
-                <option>Supplies</option>
-                <option>Abrasives</option>
-                <option>Consumables</option>
-                <option>Safety</option>
+                {PRODUCT_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
               </select>
             </div>
 

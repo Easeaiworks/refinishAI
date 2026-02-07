@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { PRODUCT_CATEGORIES } from '@/lib/constants'
 import {
   ClipboardList, Plus, CheckCircle, Clock, AlertCircle, X,
   TrendingUp, TrendingDown, Search, Filter, ChevronRight,
@@ -517,7 +518,7 @@ export default function CountsPage() {
     return matchesSearch && matchesCategory
   })
 
-  const categories = Array.from(new Set(products.map(p => p.category))).sort()
+  const categories = [...PRODUCT_CATEGORIES]
 
   const isManager = ['manager', 'admin', 'super_admin'].includes(userRole)
 

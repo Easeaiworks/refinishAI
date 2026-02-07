@@ -11,7 +11,7 @@ import {
   SUPPLIERS,
   SUPPLIER_INFO,
   SupplierCode,
-  PRODUCT_CATEGORIES,
+  SUPPLIER_PRODUCT_CATEGORIES,
   formatProductForDB
 } from '@/lib/suppliers'
 import {
@@ -382,7 +382,7 @@ export default function SuppliersPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg"
           >
             <option value="all">All Categories</option>
-            {PRODUCT_CATEGORIES.map(cat => (
+            {SUPPLIER_PRODUCT_CATEGORIES.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>

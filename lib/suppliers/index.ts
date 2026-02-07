@@ -125,8 +125,8 @@ export const SUPPLIER_INFO: Record<SupplierCode, { name: string; website: string
   }
 }
 
-// Product Categories
-export const PRODUCT_CATEGORIES = [
+// Supplier Product Categories (granular supplier-specific classification)
+export const SUPPLIER_PRODUCT_CATEGORIES = [
   'Basecoat',
   'Clear Coat',
   'Primer',
