@@ -6,16 +6,11 @@
 -- ────────────────────────────────────────────────────────────
 -- 1. CREATE TEST Co COMPANY
 -- ────────────────────────────────────────────────────────────
-INSERT INTO companies (id, name, email, phone, address, city, state, zip, subscription_status)
+INSERT INTO companies (id, name, email, subscription_status)
 VALUES (
   'aaaaaaaa-bbbb-cccc-dddd-000000000002',
   'TEST Co',
   'admin@testco.com',
-  '555-000-0000',
-  '100 Test Street',
-  'Portland',
-  'ME',
-  '04101',
   'trial'
 )
 ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name;
