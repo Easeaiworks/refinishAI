@@ -4,6 +4,99 @@
 -- ============================================================
 
 -- ────────────────────────────────────────────────────────────
+-- 0. PREREQUISITES: Ensure all required columns/tables exist
+--    (handles case where prior migrations weren't applied)
+-- ────────────────────────────────────────────────────────────
+
+-- Company address fields
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS address text;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS city text;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS state text;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS zip text;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS website text;
+
+-- Vehicle company_id
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES companies(id);
+
+-- Insurance companies table
+CREATE TABLE IF NOT EXISTS insurance_companies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  code text UNIQUE,
+  phone text,
+  email text,
+  website text,
+  claims_portal_url text,
+  notes text,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE insurance_companies ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  CREATE POLICY "All users can view insurance companies" ON insurance_companies FOR SELECT USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Seed insurance companies
+INSERT INTO insurance_companies (name, code, website) VALUES
+  ('State Farm', 'STFM', 'https://www.statefarm.com'),
+  ('GEICO', 'GECO', 'https://www.geico.com'),
+  ('Progressive', 'PROG', 'https://www.progressive.com'),
+  ('Allstate', 'ALLS', 'https://www.allstate.com'),
+  ('USAA', 'USAA', 'https://www.usaa.com'),
+  ('Liberty Mutual', 'LBMY', 'https://www.libertymutual.com'),
+  ('Farmers Insurance', 'FARM', 'https://www.farmers.com'),
+  ('Nationwide', 'NATN', 'https://www.nationwide.com'),
+  ('Travelers', 'TRVL', 'https://www.travelers.com'),
+  ('American Family', 'AMFM', 'https://www.amfam.com'),
+  ('Erie Insurance', 'ERIE', 'https://www.erieinsurance.com'),
+  ('Mercury Insurance', 'MERC', 'https://www.mercuryinsurance.com'),
+  ('Hartford', 'HRTF', 'https://www.thehartford.com'),
+  ('Auto-Owners', 'AUTO', 'https://www.auto-owners.com'),
+  ('Customer Pay', 'CUST', NULL)
+ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, website = EXCLUDED.website;
+
+-- Add insurance + labor columns to estimates
+ALTER TABLE estimates
+ADD COLUMN IF NOT EXISTS insurance_company_id uuid REFERENCES insurance_companies(id),
+ADD COLUMN IF NOT EXISTS claim_number text,
+ADD COLUMN IF NOT EXISTS body_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS refinish_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS mechanical_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS structural_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS aluminum_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS glass_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_labor_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_parts_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_materials_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_sublet_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS deductible numeric(10,2) DEFAULT 0;
+
+-- Add insurance + labor columns to invoices
+ALTER TABLE invoices
+ADD COLUMN IF NOT EXISTS insurance_company_id uuid REFERENCES insurance_companies(id),
+ADD COLUMN IF NOT EXISTS claim_number text,
+ADD COLUMN IF NOT EXISTS body_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS refinish_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS mechanical_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS structural_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS aluminum_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS glass_labor_hours numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_labor_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_parts_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_materials_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_sublet_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS deductible numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS labor_cost numeric(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS material_cost numeric(10,2) DEFAULT 0;
+
+-- Product attribute columns
+ALTER TABLE products ADD COLUMN IF NOT EXISTS manufacturer text;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS product_line text;
+
+-- ────────────────────────────────────────────────────────────
 -- 1. CREATE TEST Co COMPANY
 -- ────────────────────────────────────────────────────────────
 INSERT INTO companies (id, name, email, subscription_status)
