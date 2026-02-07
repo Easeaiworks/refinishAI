@@ -21,7 +21,8 @@ import {
   ShoppingCart,
   Settings,
   HelpCircle,
-  FileText
+  FileText,
+  Receipt
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -46,6 +47,8 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Inventory', href: '/dashboard/inventory', icon: Package, roles: ['staff', 'manager', 'admin', 'super_admin'] },
+    { name: 'Estimates', href: '/dashboard/estimates', icon: FileText, roles: ['staff', 'manager', 'admin', 'super_admin'] },
+    { name: 'Invoices', href: '/dashboard/invoices', icon: Receipt, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Counts', href: '/dashboard/counts', icon: ClipboardList, roles: ['staff', 'manager', 'admin', 'super_admin'] },
     { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Reorder', href: '/dashboard/reorder', icon: ShoppingCart, roles: ['manager', 'admin', 'super_admin'] },
