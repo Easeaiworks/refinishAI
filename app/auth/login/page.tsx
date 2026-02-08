@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-full.svg" alt="RefinishAI" className="h-16 mx-auto mb-4" />
+            <img src="/logo-full.png" alt="RefinishAI" className="h-24 mx-auto mb-4" />
             <p className="text-gray-600">Intelligent Inventory Forecasting</p>
           </div>
 

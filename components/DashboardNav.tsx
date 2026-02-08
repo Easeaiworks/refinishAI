@@ -77,7 +77,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-icon.svg" alt="RefinishAI" className="w-10 h-10 rounded-lg" />
+              <img src="/logo-icon.png" alt="RefinishAI" className="w-10 h-10 rounded-lg" />
               <div className="hidden sm:block">
                 <h1 className="text-xl font-bold text-gray-900">
                   <span>refinish</span><span className="text-blue-600">AI</span>
