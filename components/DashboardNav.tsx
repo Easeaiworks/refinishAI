@@ -21,7 +21,8 @@ import {
   Receipt,
   ChevronDown,
   MoreHorizontal,
-  User
+  User,
+  CreditCard
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -91,6 +92,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
   // User menu items
   const userMenuNav = [
     { name: 'Settings', href: '/dashboard/company', icon: Settings, show: isAdmin },
+    { name: 'Billing', href: '/dashboard/company/billing', icon: CreditCard, show: isAdmin },
     { name: 'Admin', href: '/dashboard/admin', icon: Shield, show: userRole === 'super_admin' },
     { name: 'Help', href: '/dashboard/help', icon: HelpCircle, show: true },
   ].filter(item => item.show)

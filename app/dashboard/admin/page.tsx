@@ -7,7 +7,7 @@ import {
   X, Plus, Trash2, Edit2, Package, Search,
   ChevronDown, ChevronRight, Mail, Key, UserPlus,
   RefreshCw, Check, XCircle, Eye, EyeOff, Truck, DollarSign,
-  MapPin, Lock
+  MapPin, Lock, CreditCard
 } from 'lucide-react'
 
 interface Company {
@@ -97,6 +97,60 @@ interface LocationRow {
   location_code: string
 }
 
+interface SubscriptionPlan {
+  id: string
+  name: string
+  description?: string
+  billing_period: 'monthly' | 'annual'
+  base_price: number
+  included_users: number
+  price_per_additional_user: number
+  is_active: boolean
+  created_at: string
+}
+
+interface CompanySubscription {
+  id: string
+  company_id: string
+  plan_id: string
+  billing_period: 'monthly' | 'annual'
+  status: 'active' | 'trial' | 'suspended' | 'cancelled'
+  current_user_count: number
+  renewal_date: string
+  created_at: string
+  company?: Company
+  plan?: SubscriptionPlan
+}
+
+interface BillingInvoice {
+  id: string
+  company_id: string
+  invoice_number: string
+  amount: number
+  status: 'draft' | 'sent' | 'paid' | 'cancelled' | 'overdue'
+  description?: string
+  notes?: string
+  invoice_date: string
+  due_date: string
+  created_at: string
+  company?: Company
+}
+
+interface PaymentRecord {
+  id: string
+  invoice_id?: string
+  company_id: string
+  amount: number
+  payment_method: string
+  status: 'pending' | 'completed' | 'failed'
+  transaction_reference?: string
+  notes?: string
+  payment_date: string
+  created_at: string
+  company?: Company
+  invoice?: BillingInvoice
+}
+
 export default function SuperAdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [allUsers, setAllUsers] = useState<UserProfile[]>([])
@@ -104,6 +158,10 @@ export default function SuperAdminPage() {
   const [companyVendors, setCompanyVendors] = useState<CompanyVendor[]>([])
   const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([])
   const [companyInsuranceRates, setCompanyInsuranceRates] = useState<CompanyInsuranceRate[]>([])
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([])
+  const [companySubscriptions, setCompanySubscriptions] = useState<CompanySubscription[]>([])
+  const [billingInvoices, setBillingInvoices] = useState<BillingInvoice[]>([])
+  const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([])
   const [stats, setStats] = useState({
     totalCompanies: 0,
     activeCompanies: 0,
@@ -114,18 +172,25 @@ export default function SuperAdminPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCompany, setExpandedCompany] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'vendors' | 'insurance'>('companies')
+  const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'vendors' | 'insurance' | 'licensing'>('companies')
   const [companiesViewMode, setCompaniesViewMode] = useState<'list' | 'hierarchy'>('list')
+  const [licensingView, setLicensingView] = useState<'plans' | 'subscriptions' | 'invoices' | 'payments'>('plans')
 
   // Modals
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false)
   const [showAddUserModal, setShowAddUserModal] = useState(false)
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
   const [showVendorModal, setShowVendorModal] = useState(false)
+  const [showAddPlanModal, setShowAddPlanModal] = useState(false)
+  const [showAssignPlanModal, setShowAssignPlanModal] = useState(false)
+  const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false)
+  const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false)
   const [editingCompany, setEditingCompany] = useState<Company | null>(null)
+  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null)
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null)
   const [selectedCompanyForUser, setSelectedCompanyForUser] = useState<string>('')
   const [selectedCompanyForVendor, setSelectedCompanyForVendor] = useState<Company | null>(null)
+  const [selectedInvoice, setSelectedInvoice] = useState<BillingInvoice | null>(null)
 
   const supabase = createClient()
 
@@ -194,6 +259,30 @@ export default function SuperAdminPage() {
       .from('company_insurance_rates')
       .select('*, insurance_company:insurance_companies(*)')
 
+    // Load subscription plans
+    const { data: plansData } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    // Load company subscriptions with company and plan details
+    const { data: subscriptionsData } = await supabase
+      .from('company_subscriptions')
+      .select('*, company:companies(*), plan:subscription_plans(*)')
+      .order('created_at', { ascending: false })
+
+    // Load billing invoices with company details
+    const { data: invoicesData } = await supabase
+      .from('billing_invoices')
+      .select('*, company:companies(*)')
+      .order('invoice_date', { ascending: false })
+
+    // Load payment history with company and invoice details
+    const { data: paymentsData } = await supabase
+      .from('payment_history')
+      .select('*, company:companies(*), invoice:billing_invoices(*)')
+      .order('payment_date', { ascending: false })
+
     // Load stats
     const { count: productCount } = await supabase
       .from('products')
@@ -212,6 +301,10 @@ export default function SuperAdminPage() {
       setCompanyVendors(vendorsData || [])
       setInsuranceCompanies(insuranceData || [])
       setCompanyInsuranceRates(insuranceRatesData || [])
+      setSubscriptionPlans(plansData || [])
+      setCompanySubscriptions(subscriptionsData || [])
+      setBillingInvoices(invoicesData || [])
+      setPaymentHistory(paymentsData || [])
       setStats({
         totalCompanies: companiesData.length,
         activeCompanies: companiesData.filter((c: any) => c.subscription_status === 'active').length,
@@ -461,6 +554,17 @@ export default function SuperAdminPage() {
           >
             <DollarSign className="w-4 h-4 inline-block mr-2" />
             Insurance Rates
+          </button>
+          <button
+            onClick={() => setActiveTab('licensing')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'licensing'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <CreditCard className="w-4 h-4 inline-block mr-2" />
+            Licensing
           </button>
         </nav>
       </div>
@@ -894,6 +998,441 @@ export default function SuperAdminPage() {
             loadData()
           }}
         />
+      )}
+
+      {showAddPlanModal && (
+        <AddPlanModal
+          plan={editingPlan}
+          onClose={() => {
+            setShowAddPlanModal(false)
+            setEditingPlan(null)
+          }}
+          onSave={() => {
+            loadData()
+            setShowAddPlanModal(false)
+            setEditingPlan(null)
+          }}
+        />
+      )}
+
+      {showAssignPlanModal && (
+        <AssignPlanModal
+          companies={companies}
+          subscriptionPlans={subscriptionPlans}
+          onClose={() => setShowAssignPlanModal(false)}
+          onSave={() => {
+            loadData()
+            setShowAssignPlanModal(false)
+          }}
+        />
+      )}
+
+      {showCreateInvoiceModal && (
+        <CreateInvoiceModal
+          companies={companies}
+          onClose={() => setShowCreateInvoiceModal(false)}
+          onSave={() => {
+            loadData()
+            setShowCreateInvoiceModal(false)
+          }}
+        />
+      )}
+
+      {showRecordPaymentModal && (
+        <RecordPaymentModal
+          companies={companies}
+          invoices={billingInvoices}
+          onClose={() => setShowRecordPaymentModal(false)}
+          onSave={() => {
+            loadData()
+            setShowRecordPaymentModal(false)
+          }}
+        />
+      )}
+
+      {/* Licensing Tab */}
+      {activeTab === 'licensing' && (
+        <div className="space-y-6">
+          {/* Sub-nav for Licensing Views */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+            <nav className="flex gap-0">
+              <button
+                onClick={() => setLicensingView('plans')}
+                className={`flex-1 px-4 py-3 text-sm font-medium border-r border-gray-200 transition-colors ${
+                  licensingView === 'plans'
+                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Plans
+              </button>
+              <button
+                onClick={() => setLicensingView('subscriptions')}
+                className={`flex-1 px-4 py-3 text-sm font-medium border-r border-gray-200 transition-colors ${
+                  licensingView === 'subscriptions'
+                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Subscriptions
+              </button>
+              <button
+                onClick={() => setLicensingView('invoices')}
+                className={`flex-1 px-4 py-3 text-sm font-medium border-r border-gray-200 transition-colors ${
+                  licensingView === 'invoices'
+                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Invoices
+              </button>
+              <button
+                onClick={() => setLicensingView('payments')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  licensingView === 'payments'
+                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Payments
+              </button>
+            </nav>
+          </div>
+
+          {/* Plans View */}
+          {licensingView === 'plans' && (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setEditingPlan(null)
+                    setShowAddPlanModal(true)
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Plan
+                </button>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-slate-100 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Period</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Base Price</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Users</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Extra User</th>
+                      <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Active</th>
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {subscriptionPlans.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-gray-500">
+                          No subscription plans configured yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      subscriptionPlans.map(plan => (
+                        <tr key={plan.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <p className="font-medium text-gray-900">{plan.name}</p>
+                            {plan.description && <p className="text-xs text-gray-500 mt-1">{plan.description}</p>}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 capitalize">{plan.billing_period}</td>
+                          <td className="py-3 px-4 text-gray-900 font-medium">${plan.base_price.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-gray-600">{plan.included_users}</td>
+                          <td className="py-3 px-4 text-gray-600">${plan.price_per_additional_user.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                              plan.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {plan.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => {
+                                setEditingPlan(plan)
+                                setShowAddPlanModal(true)
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Subscriptions View */}
+          {licensingView === 'subscriptions' && (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowAssignPlanModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Assign Plan
+                </button>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-slate-100 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plan</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Period</th>
+                      <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                      <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Users</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Renewal</th>
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {companySubscriptions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-gray-500">
+                          No subscriptions assigned yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      companySubscriptions.map(sub => {
+                        const plan = subscriptionPlans.find(p => p.id === sub.plan_id)
+                        const activeUsers = companies.find(c => c.id === sub.company_id)?.users?.filter(u => u.is_active).length || 0
+                        return (
+                          <tr key={sub.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <p className="font-medium text-gray-900">{sub.company?.name || 'Unknown'}</p>
+                            </td>
+                            <td className="py-3 px-4 text-gray-600">{plan?.name || 'Unknown Plan'}</td>
+                            <td className="py-3 px-4 text-gray-600 capitalize">{sub.billing_period}</td>
+                            <td className="py-3 px-4 text-center">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                sub.status === 'active' ? 'bg-green-100 text-green-800' :
+                                sub.status === 'trial' ? 'bg-yellow-100 text-yellow-800' :
+                                sub.status === 'suspended' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center text-gray-600">
+                              {activeUsers} / {plan?.included_users || 0}
+                            </td>
+                            <td className="py-3 px-4 text-gray-600 text-sm">
+                              {new Date(sub.renewal_date).toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <select
+                                value={sub.status}
+                                onChange={(e) => {
+                                  supabase
+                                    .from('company_subscriptions')
+                                    .update({ status: e.target.value })
+                                    .eq('id', sub.id)
+                                    .then(() => loadData())
+                                }}
+                                className="px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer bg-gray-100 text-gray-700"
+                              >
+                                <option value="active">Active</option>
+                                <option value="trial">Trial</option>
+                                <option value="suspended">Suspended</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Invoices View */}
+          {licensingView === 'invoices' && (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowCreateInvoiceModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Invoice
+                </button>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-slate-100 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Invoice #</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+                      <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Due</th>
+                      <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {billingInvoices.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-gray-500">
+                          No invoices found.
+                        </td>
+                      </tr>
+                    ) : (
+                      billingInvoices.map(invoice => (
+                        <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <p className="font-medium text-gray-900">{invoice.invoice_number}</p>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600">{invoice.company?.name || 'Unknown'}</td>
+                          <td className="py-3 px-4 text-gray-900 font-medium">${invoice.amount.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                              invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                              invoice.status === 'sent' ? 'bg-yellow-100 text-yellow-800' :
+                              invoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                              invoice.status === 'cancelled' ? 'bg-gray-100 text-gray-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 text-sm">
+                            {new Date(invoice.invoice_date).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4 text-gray-600 text-sm">
+                            {new Date(invoice.due_date).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex gap-1 justify-end">
+                              {invoice.status !== 'paid' && (
+                                <button
+                                  onClick={() => {
+                                    supabase
+                                      .from('billing_invoices')
+                                      .update({ status: 'sent' })
+                                      .eq('id', invoice.id)
+                                      .then(() => loadData())
+                                  }}
+                                  className="px-2 py-1 text-xs bg-yellow-50 text-yellow-700 rounded hover:bg-yellow-100"
+                                  title="Mark Sent"
+                                >
+                                  Send
+                                </button>
+                              )}
+                              {invoice.status !== 'paid' && (
+                                <button
+                                  onClick={() => {
+                                    supabase
+                                      .from('billing_invoices')
+                                      .update({ status: 'paid' })
+                                      .eq('id', invoice.id)
+                                      .then(() => loadData())
+                                  }}
+                                  className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100"
+                                  title="Mark Paid"
+                                >
+                                  Mark Paid
+                                </button>
+                              )}
+                              {invoice.status !== 'cancelled' && (
+                                <button
+                                  onClick={() => {
+                                    supabase
+                                      .from('billing_invoices')
+                                      .update({ status: 'cancelled' })
+                                      .eq('id', invoice.id)
+                                      .then(() => loadData())
+                                  }}
+                                  className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100"
+                                  title="Cancel"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Payments View */}
+          {licensingView === 'payments' && (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowRecordPaymentModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Record Payment
+                </button>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-slate-100 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Invoice</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Method</th>
+                      <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-gray-500">
+                          No payments recorded.
+                        </td>
+                      </tr>
+                    ) : (
+                      paymentHistory.map(payment => (
+                        <tr key={payment.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4 text-gray-600 text-sm">
+                            {new Date(payment.payment_date).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4 text-gray-900 font-medium">{payment.company?.name || 'Unknown'}</td>
+                          <td className="py-3 px-4 text-gray-600">{payment.invoice?.invoice_number || '—'}</td>
+                          <td className="py-3 px-4 text-gray-900 font-medium">${payment.amount.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-gray-600 capitalize">{payment.payment_method}</td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                              payment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -1982,6 +2521,634 @@ function VendorManagementModal({ company, vendorCatalog, onClose, onSave }: { co
             Done
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Add/Edit Plan Modal
+function AddPlanModal({ plan, onClose, onSave }: { plan: SubscriptionPlan | null; onClose: () => void; onSave: () => void }) {
+  const [formData, setFormData] = useState({
+    name: plan?.name || '',
+    description: plan?.description || '',
+    billing_period: (plan?.billing_period || 'monthly') as 'monthly' | 'annual',
+    base_price: plan?.base_price || 0,
+    included_users: plan?.included_users || 0,
+    price_per_additional_user: plan?.price_per_additional_user || 0,
+    is_active: plan?.is_active ?? true
+  })
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      if (plan) {
+        await supabase
+          .from('subscription_plans')
+          .update(formData)
+          .eq('id', plan.id)
+      } else {
+        await supabase
+          .from('subscription_plans')
+          .insert([formData])
+      }
+      onSave()
+    } catch (error) {
+      alert('Error saving plan')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">{plan ? 'Edit Plan' : 'Add New Plan'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Plan Name *</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Billing Period *</label>
+            <select
+              value={formData.billing_period}
+              onChange={(e) => setFormData({ ...formData, billing_period: e.target.value as 'monthly' | 'annual' })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="monthly">Monthly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Base Price *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={formData.base_price}
+                  onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) })}
+                  className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Included Users *</label>
+              <input
+                type="number"
+                required
+                min="0"
+                value={formData.included_users}
+                onChange={(e) => setFormData({ ...formData, included_users: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Price Per Additional User *</label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-500">$</span>
+              <input
+                type="number"
+                required
+                min="0"
+                step="0.01"
+                value={formData.price_per_additional_user}
+                onChange={(e) => setFormData({ ...formData, price_per_additional_user: parseFloat(e.target.value) })}
+                className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="is_active"
+              checked={formData.is_active}
+              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              className="w-4 h-4"
+            />
+            <label htmlFor="is_active" className="text-sm font-medium text-gray-700">Active</label>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400">
+              {saving ? 'Saving...' : 'Save Plan'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Assign Plan Modal
+function AssignPlanModal({ companies, subscriptionPlans, onClose, onSave }: { companies: Company[]; subscriptionPlans: SubscriptionPlan[]; onClose: () => void; onSave: () => void }) {
+  const [formData, setFormData] = useState({
+    company_id: '',
+    plan_id: '',
+    billing_period: 'monthly' as 'monthly' | 'annual',
+    status: 'active' as 'active' | 'trial'
+  })
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const renewalDate = new Date()
+      if (formData.billing_period === 'monthly') {
+        renewalDate.setMonth(renewalDate.getMonth() + 1)
+      } else {
+        renewalDate.setFullYear(renewalDate.getFullYear() + 1)
+      }
+
+      await supabase
+        .from('company_subscriptions')
+        .insert([{
+          company_id: formData.company_id,
+          plan_id: formData.plan_id,
+          billing_period: formData.billing_period,
+          status: formData.status,
+          renewal_date: renewalDate.toISOString(),
+          current_user_count: 0
+        }])
+      onSave()
+    } catch (error) {
+      alert('Error assigning plan')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">Assign Plan to Company</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+            <select
+              required
+              value={formData.company_id}
+              onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Select a company...</option>
+              {companies.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Plan *</label>
+            <select
+              required
+              value={formData.plan_id}
+              onChange={(e) => setFormData({ ...formData, plan_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Select a plan...</option>
+              {subscriptionPlans.filter(p => p.is_active).map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Billing Period *</label>
+            <select
+              value={formData.billing_period}
+              onChange={(e) => setFormData({ ...formData, billing_period: e.target.value as 'monthly' | 'annual' })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="monthly">Monthly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'trial' })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="trial">Trial</option>
+              <option value="active">Active</option>
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400">
+              {saving ? 'Assigning...' : 'Assign Plan'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Create Invoice Modal
+function CreateInvoiceModal({ companies, onClose, onSave }: { companies: Company[]; onClose: () => void; onSave: () => void }) {
+  const [formData, setFormData] = useState({
+    company_id: '',
+    description: '',
+    due_date: '',
+    notes: ''
+  })
+  const [lineItems, setLineItems] = useState([{ id: '1', description: '', quantity: 1, unit_price: 0 }])
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
+  const addLineItem = () => {
+    setLineItems([...lineItems, { id: Date.now().toString(), description: '', quantity: 1, unit_price: 0 }])
+  }
+
+  const removeLineItem = (id: string) => {
+    setLineItems(lineItems.filter(item => item.id !== id))
+  }
+
+  const updateLineItem = (id: string, field: string, value: any) => {
+    setLineItems(lineItems.map(item =>
+      item.id === id ? { ...item, [field]: value } : item
+    ))
+  }
+
+  const totalAmount = lineItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const invoiceNumber = `INV-${Date.now()}`
+      await supabase
+        .from('billing_invoices')
+        .insert([{
+          company_id: formData.company_id,
+          invoice_number: invoiceNumber,
+          amount: totalAmount,
+          description: formData.description,
+          notes: formData.notes,
+          status: 'draft',
+          invoice_date: new Date().toISOString(),
+          due_date: formData.due_date
+        }])
+      onSave()
+    } catch (error) {
+      alert('Error creating invoice')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
+          <h2 className="text-xl font-bold text-gray-900">Create Invoice</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+            <select
+              required
+              value={formData.company_id}
+              onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Select a company...</option>
+              {companies.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-sm font-medium text-gray-700">Line Items</label>
+              <button
+                type="button"
+                onClick={addLineItem}
+                className="flex items-center gap-1 text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-100"
+              >
+                <Plus className="w-4 h-4" />
+                Add Item
+              </button>
+            </div>
+            <div className="border border-gray-300 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-300">
+                  <tr>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Description</th>
+                    <th className="text-center py-2 px-3 font-semibold text-gray-700 w-20">Qty</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-700 w-28">Unit Price</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-700 w-28">Total</th>
+                    <th className="text-center py-2 px-3 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lineItems.map((item) => (
+                    <tr key={item.id} className="border-b border-gray-200">
+                      <td className="py-2 px-3">
+                        <input
+                          type="text"
+                          placeholder="Item description"
+                          value={item.description}
+                          onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateLineItem(item.id, 'quantity', parseInt(e.target.value))}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-center"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <div className="relative">
+                          <span className="absolute left-2 top-1 text-gray-500 text-xs">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unit_price}
+                            onChange={(e) => updateLineItem(item.id, 'unit_price', parseFloat(e.target.value))}
+                            className="w-full pl-5 pr-2 py-1 border border-gray-300 rounded text-xs text-right"
+                          />
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 text-right text-xs font-medium">
+                        ${(item.quantity * item.unit_price).toFixed(2)}
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeLineItem(item.id)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 text-right">
+              <div className="text-lg font-bold text-gray-900">
+                Total: ${totalAmount.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+              <input
+                type="date"
+                required
+                value={formData.due_date}
+                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              rows={2}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400">
+              {saving ? 'Creating...' : 'Create Invoice'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Record Payment Modal
+function RecordPaymentModal({ companies, invoices, onClose, onSave }: { companies: Company[]; invoices: BillingInvoice[]; onClose: () => void; onSave: () => void }) {
+  const [formData, setFormData] = useState({
+    company_id: '',
+    invoice_id: '',
+    amount: 0,
+    payment_method: 'bank_transfer',
+    transaction_reference: '',
+    notes: ''
+  })
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await supabase
+        .from('payment_history')
+        .insert([{
+          company_id: formData.company_id,
+          invoice_id: formData.invoice_id || null,
+          amount: formData.amount,
+          payment_method: formData.payment_method,
+          transaction_reference: formData.transaction_reference,
+          notes: formData.notes,
+          status: 'completed',
+          payment_date: new Date().toISOString()
+        }])
+
+      // Update invoice status if paid amount matches
+      if (formData.invoice_id) {
+        const invoice = invoices.find(i => i.id === formData.invoice_id)
+        if (invoice && formData.amount >= invoice.amount) {
+          await supabase
+            .from('billing_invoices')
+            .update({ status: 'paid' })
+            .eq('id', formData.invoice_id)
+        }
+      }
+
+      onSave()
+    } catch (error) {
+      alert('Error recording payment')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const selectedInvoice = invoices.find(i => i.id === formData.invoice_id)
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">Record Payment</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+            <select
+              required
+              value={formData.company_id}
+              onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Select a company...</option>
+              {companies.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice (Optional)</label>
+            <select
+              value={formData.invoice_id}
+              onChange={(e) => setFormData({ ...formData, invoice_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Select an invoice...</option>
+              {invoices.filter(i => i.company_id === formData.company_id).map(i => (
+                <option key={i.id} value={i.id}>{i.invoice_number} - ${i.amount.toFixed(2)}</option>
+              ))}
+            </select>
+            {selectedInvoice && (
+              <p className="text-xs text-gray-500 mt-1">Invoice Amount: ${selectedInvoice.amount.toFixed(2)}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-500">$</span>
+              <input
+                type="number"
+                required
+                min="0"
+                step="0.01"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
+                className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
+            <select
+              value={formData.payment_method}
+              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="credit_card">Credit Card</option>
+              <option value="check">Check</option>
+              <option value="cash">Cash</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Reference</label>
+            <input
+              type="text"
+              value={formData.transaction_reference}
+              onChange={(e) => setFormData({ ...formData, transaction_reference: e.target.value })}
+              placeholder="e.g., Check #123 or Transfer ID"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              rows={2}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400">
+              {saving ? 'Recording...' : 'Record Payment'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
