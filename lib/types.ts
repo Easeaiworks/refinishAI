@@ -228,3 +228,51 @@ export interface UserAdjustmentSummary {
   totalValue: number;
   adjustments: AdjustmentEntry[];
 }
+
+// ── Purchase Order Types ──────────────────────────────────────
+
+export interface PurchaseOrder {
+  id: string;
+  company_id: string;
+  po_number: string;
+  status: 'draft' | 'submitted' | 'received' | 'partial' | 'cancelled';
+  vendor_code?: string;
+  vendor_name?: string;
+  created_by?: string;
+  submitted_date?: string;
+  received_date?: string;
+  total_items: number;
+  total_cost: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  items?: PurchaseOrderItem[];
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchase_order_id: string;
+  product_id?: string;
+  sku: string;
+  product_name: string;
+  category: string;
+  manufacturer: string;
+  unit?: string;
+  quantity_ordered: number;
+  unit_cost: number;
+  extended_cost: number;
+  quantity_received: number;
+  priority?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface PurchaseOrderFilters {
+  search?: string;
+  status?: string;
+  manufacturer?: string;
+  category?: string;
+  startDate?: string;
+  endDate?: string;
+}

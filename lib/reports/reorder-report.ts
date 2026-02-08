@@ -2,6 +2,7 @@
 // Generates detailed reorder recommendations with full product information
 
 import { SupabaseClient } from '@supabase/supabase-js'
+import { getPaintLineFilter, shouldIncludeProduct, type PaintLineFilter } from '@/lib/services/paint-line-filter'
 
 // Types
 export interface ReorderItem {
@@ -11,6 +12,7 @@ export interface ReorderItem {
   sku: string
   productName: string
   category: string
+  manufacturer: string | null
   vendorCode: string | null
 
   // Inventory levels
@@ -95,7 +97,8 @@ export class ReorderReportService {
 
   async generateReport(
     companyId: string,
-    options: ReorderReportOptions = {}
+    options: ReorderReportOptions = {},
+    paintLineFilter?: PaintLineFilter
   ): Promise<ReorderReport> {
     const settings = {
       leadTimeSafetyBuffer: options.leadTimeSafetyBuffer ?? 3,
@@ -126,6 +129,16 @@ export class ReorderReportService {
       .eq('company_id', companyId)
       .eq('is_active', true)
       .order('name')
+
+    // Apply paint line contract filter if provided
+    // This ensures only the contracted manufacturer's paint products show
+    // while non-paint products (abrasives, consumables, etc.) show from all vendors
+    let filteredProducts = products || []
+    if (paintLineFilter) {
+      filteredProducts = filteredProducts.filter(product =>
+        shouldIncludeProduct(product, paintLineFilter)
+      )
+    }
 
     // Get consumption history for usage calculations (last 90 days)
     const ninetyDaysAgo = new Date()
@@ -174,7 +187,7 @@ export class ReorderReportService {
     // Generate reorder items
     const items: ReorderItem[] = []
 
-    for (const product of products || []) {
+    for (const product of filteredProducts) {
       const totalUsed90Days = consumptionMap.get(product.id) || 0
       const avgDailyUsage = totalUsed90Days / 90
       const avgWeeklyUsage = avgDailyUsage * 7
@@ -261,6 +274,7 @@ export class ReorderReportService {
         sku: product.sku || '',
         productName: product.name,
         category: product.category || 'Uncategorized',
+        manufacturer: product.manufacturer || product.supplier || null,
         vendorCode: product.vendor_code || null,
         currentStock,
         reorderPoint,

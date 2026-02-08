@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Building2, Save, Plus, Trash2, ChevronDown, ChevronUp,
   DollarSign, Shield, Settings, Users, Phone, Mail, MapPin,
-  Globe, FileText, AlertCircle, CheckCircle, Edit2, X
+  Globe, FileText, AlertCircle, CheckCircle, Edit2, X, Palette
 } from 'lucide-react'
+import { getPaintManufacturers } from '@/lib/services/paint-line-filter'
 
 interface Company {
   id: string
@@ -84,6 +85,14 @@ export default function CompanyAdminPage() {
   const [rateInputs, setRateInputs] = useState<Record<string, Record<string, number>>>({})
 
   const [activeTab, setActiveTab] = useState<'profile' | 'insurance' | 'settings'>('profile')
+
+  // Paint line contract state
+  const [paintManufacturers, setPaintManufacturers] = useState<Array<{ code: string; name: string }>>([])
+  const [currentPaintLine, setCurrentPaintLine] = useState<{ vendorCode: string; vendorName: string } | null>(null)
+  const [selectedPaintLine, setSelectedPaintLine] = useState('')
+  const [savingPaintLine, setSavingPaintLine] = useState(false)
+  const [showPaintLineWarning, setShowPaintLineWarning] = useState(false)
+  const [pendingPaintLineCode, setPendingPaintLineCode] = useState('')
 
   useEffect(() => {
     loadData()
@@ -166,6 +175,30 @@ export default function CompanyAdminPage() {
       }
       setRateInputs(inputs)
 
+      // Load paint manufacturers and current paint line
+      const manufacturers = await getPaintManufacturers(supabase)
+      setPaintManufacturers(manufacturers)
+
+      // Get current primary paint vendor
+      const { data: primaryVendor } = await supabase
+        .from('company_vendors')
+        .select('vendor_code, vendor_name')
+        .eq('company_id', profile.company_id)
+        .eq('is_primary', true)
+        .eq('is_active', true)
+        .limit(1)
+
+      if (primaryVendor && primaryVendor.length > 0) {
+        setCurrentPaintLine({
+          vendorCode: primaryVendor[0].vendor_code,
+          vendorName: primaryVendor[0].vendor_name,
+        })
+        setSelectedPaintLine(primaryVendor[0].vendor_code)
+      } else {
+        setCurrentPaintLine(null)
+        setSelectedPaintLine('')
+      }
+
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -203,6 +236,76 @@ export default function CompanyAdminPage() {
       setError(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const savePaintLine = async (vendorCode: string) => {
+    if (!company) return
+
+    try {
+      setSavingPaintLine(true)
+      setError(null)
+
+      const manufacturer = paintManufacturers.find(m => m.code === vendorCode)
+      if (!manufacturer && vendorCode) {
+        throw new Error('Invalid paint manufacturer selected')
+      }
+
+      if (vendorCode) {
+        // Deactivate any existing primary vendors first
+        await supabase
+          .from('company_vendors')
+          .update({ is_primary: false })
+          .eq('company_id', company.id)
+          .eq('is_primary', true)
+
+        // Upsert the new primary vendor
+        const { error: upsertError } = await supabase
+          .from('company_vendors')
+          .upsert({
+            company_id: company.id,
+            vendor_code: vendorCode,
+            vendor_name: manufacturer!.name,
+            is_primary: true,
+            is_active: true,
+          }, {
+            onConflict: 'company_id,vendor_code'
+          })
+
+        if (upsertError) throw upsertError
+
+        setCurrentPaintLine({ vendorCode, vendorName: manufacturer!.name })
+        setSelectedPaintLine(vendorCode)
+        setSuccess(`Paint line set to ${manufacturer!.name}`)
+      } else {
+        // Remove primary vendor (no paint line)
+        await supabase
+          .from('company_vendors')
+          .update({ is_primary: false })
+          .eq('company_id', company.id)
+          .eq('is_primary', true)
+
+        setCurrentPaintLine(null)
+        setSelectedPaintLine('')
+        setSuccess('Paint line contract removed')
+      }
+
+      setShowPaintLineWarning(false)
+      setPendingPaintLineCode('')
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSavingPaintLine(false)
+    }
+  }
+
+  const handlePaintLineChange = (newCode: string) => {
+    // If changing from an existing paint line, show warning
+    if (currentPaintLine && newCode !== currentPaintLine.vendorCode) {
+      setPendingPaintLineCode(newCode)
+      setShowPaintLineWarning(true)
+    } else {
+      savePaintLine(newCode)
     }
   }
 
@@ -603,6 +706,106 @@ export default function CompanyAdminPage() {
               </div>
             </div>
           </div>
+
+          {/* Paint Line Contract Section */}
+          <div className="mt-6 pt-6 border-t">
+            <div className="flex items-center gap-2 mb-4">
+              <Palette className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-semibold text-gray-900">Paint Line Contract</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Select your contracted paint manufacturer. Reorder reports will only show products from
+              this paint line, while non-paint products (abrasives, masking, safety, etc.) from all vendors remain visible.
+            </p>
+
+            <div className="flex items-center gap-4">
+              <div className="flex-1 max-w-sm">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Primary Paint Manufacturer
+                </label>
+                <select
+                  value={selectedPaintLine}
+                  onChange={(e) => handlePaintLineChange(e.target.value)}
+                  disabled={savingPaintLine}
+                  className="w-full border rounded-lg px-3 py-2 bg-white disabled:opacity-50"
+                >
+                  <option value="">No paint line selected</option>
+                  {paintManufacturers.map(m => (
+                    <option key={m.code} value={m.code}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {currentPaintLine && (
+                <div className="flex items-center gap-2 mt-5">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                    <Palette className="w-3.5 h-3.5" />
+                    {currentPaintLine.vendorName}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {!currentPaintLine && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-amber-700">
+                    No paint line is set. Reorder reports will show products from all paint manufacturers
+                    until a primary paint line is configured.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Paint Line Change Warning Modal */}
+          {showPaintLineWarning && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                      <AlertCircle className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Change Paint Line?</h3>
+                  </div>
+                  <p className="text-gray-600 mb-2">
+                    You are about to change your primary paint manufacturer
+                    {currentPaintLine ? ` from ${currentPaintLine.vendorName}` : ''}
+                    {pendingPaintLineCode
+                      ? ` to ${paintManufacturers.find(m => m.code === pendingPaintLineCode)?.name || 'None'}`
+                      : ' to none'
+                    }.
+                  </p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    This will immediately update all reorder reports to reflect the new paint line.
+                    Products from the previous paint manufacturer will no longer appear in reorder reports.
+                    Paint line contracts typically last 2-5 years.
+                  </p>
+                </div>
+                <div className="p-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-lg">
+                  <button
+                    onClick={() => {
+                      setShowPaintLineWarning(false)
+                      setPendingPaintLineCode('')
+                      setSelectedPaintLine(currentPaintLine?.vendorCode || '')
+                    }}
+                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => savePaintLine(pendingPaintLineCode)}
+                    disabled={savingPaintLine}
+                    className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    {savingPaintLine ? 'Updating...' : 'Confirm Change'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
