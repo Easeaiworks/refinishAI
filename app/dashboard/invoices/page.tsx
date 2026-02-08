@@ -200,59 +200,68 @@ export default function InvoicesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Invoices & Job History</h1>
-          <p className="text-gray-600 mt-2">View and manage all customer invoices and completed jobs</p>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5">
+          <h1 className="text-2xl font-bold text-white">Invoices & Job History</h1>
+          <p className="text-slate-300 mt-1 text-sm">View and manage all customer invoices and completed jobs</p>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Invoices</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{totalInvoices}</p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Invoices</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalInvoices}</p>
+              </div>
+              <Receipt className="w-6 h-6 text-blue-500" />
             </div>
-            <Receipt className="w-6 h-6 text-blue-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalRevenue)}</p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Revenue</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totalRevenue)}</p>
+              </div>
+              <DollarSign className="w-6 h-6 text-green-500" />
             </div>
-            <DollarSign className="w-6 h-6 text-green-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Avg Job Value</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(avgJobValue)}</p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Avg Job Value</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(avgJobValue)}</p>
+              </div>
+              <TrendingUp className="w-6 h-6 text-purple-500" />
             </div>
-            <TrendingUp className="w-6 h-6 text-purple-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Jobs This Month</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{jobsThisMonth}</p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Jobs This Month</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{jobsThisMonth}</p>
+              </div>
+              <Clock className="w-6 h-6 text-orange-500" />
             </div>
-            <Clock className="w-6 h-6 text-orange-500" />
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gray-50 px-5 py-3 border-b border-gray-200"><h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filters</h3></div>
+        <div className="p-4 flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -294,20 +303,22 @@ export default function InvoicesPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : filteredInvoices.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No invoices found</h3>
-          <p className="text-gray-600">
-            {searchTerm || startDate || endDate
-              ? 'Try adjusting your filters'
-              : 'No invoices have been created yet'
-            }
-          </p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-12 text-center">
+            <Receipt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No invoices found</h3>
+            <p className="text-gray-600">
+              {searchTerm || startDate || endDate
+                ? 'Try adjusting your filters'
+                : 'No invoices have been created yet'
+              }
+            </p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredInvoices.map((invoice) => (
-            <div key={invoice.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div key={invoice.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               {/* Invoice Row */}
               <button
                 onClick={() => toggleExpanded(invoice.id)}
@@ -453,13 +464,13 @@ export default function InvoicesPage() {
                       <h4 className="text-sm font-semibold text-gray-900 mb-3">Line Items</h4>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
-                          <thead className="bg-gray-100 border-y border-gray-300">
+                          <thead className="bg-slate-100 border-y border-gray-300">
                             <tr>
-                              <th className="text-left py-2 px-3 font-semibold text-gray-700">Description</th>
-                              <th className="text-right py-2 px-3 font-semibold text-gray-700">Qty</th>
-                              <th className="text-right py-2 px-3 font-semibold text-gray-700">Unit Price</th>
-                              <th className="text-right py-2 px-3 font-semibold text-gray-700">Total</th>
-                              <th className="text-center py-2 px-3 font-semibold text-gray-700">Type</th>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Qty</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Unit Price</th>
+                              <th className="text-right py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
+                              <th className="text-center py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
                             </tr>
                           </thead>
                           <tbody>

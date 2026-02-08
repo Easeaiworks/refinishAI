@@ -23,9 +23,9 @@ export default async function DashboardLayout({
     .single()
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-slate-100 flex flex-col">
       <DashboardNav user={user} profile={profile} />
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
         {children}
       </main>
     </div>

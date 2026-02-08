@@ -247,36 +247,60 @@ export default function EstimatesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Estimates Management</h1>
-          <p className="text-gray-600 mt-2">View and manage vehicle repair estimates</p>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Estimates Management</h1>
+              <p className="text-slate-300 mt-1 text-sm">View and manage vehicle repair estimates</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Total Estimates</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{totalEstimates}</p>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4">
+            <p className="text-2xl font-bold text-gray-900">{totalEstimates}</p>
+          </div>
+          <div className="bg-gray-50 px-4 py-2.5 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Estimates</p>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Active</p>
-          <p className="text-2xl font-bold text-blue-600 mt-1">{activeCount}</p>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4">
+            <p className="text-2xl font-bold text-blue-600">{activeCount}</p>
+          </div>
+          <div className="bg-gray-50 px-4 py-2.5 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Active</p>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Completed</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{completedCount}</p>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4">
+            <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+          </div>
+          <div className="bg-gray-50 px-4 py-2.5 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Completed</p>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Total Value</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-4">
+            <p className="text-2xl font-bold text-gray-900">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-gray-50 px-4 py-2.5 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Total Value</p>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
+          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filters</h3>
+        </div>
+        <div className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -328,6 +352,7 @@ export default function EstimatesPage() {
               placeholder="End Date"
             />
           </div>
+          </div>
         </div>
       </div>
 
@@ -351,16 +376,16 @@ export default function EstimatesPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-slate-100 border-b border-gray-200">
                 <tr>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Estimate #</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Customer</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Vehicle</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Insurance</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Total</th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Details</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Estimate #</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Vehicle</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Insurance</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
                 </tr>
               </thead>
               <tbody>

@@ -138,65 +138,98 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
-          <p className="text-gray-600 mt-2">Manage your refinish products and stock levels</p>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Inventory Management</h1>
+              <p className="text-slate-300 mt-1 text-sm">Manage your refinish products and stock levels</p>
+            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Add Product
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Add Product
-        </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Total Products</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{products.length}</p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4">
+            <p className="text-sm text-gray-600">Total Products</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{products.length}</p>
+          </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Active items</p>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Total Inventory Value</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4">
+            <p className="text-sm text-gray-600">Total Inventory Value</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Stock valuation</p>
+          </div>
         </div>
         <div
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:bg-orange-50 transition-colors"
+          className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-orange-50 transition-colors"
           onClick={() => setStockFilter(stockFilter === 'low' ? 'all' : 'low')}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Low Stock</p>
-              <p className="text-2xl font-bold text-orange-600 mt-1">{lowStockCount}</p>
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Low Stock</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">{lowStockCount}</p>
+              </div>
+              <AlertTriangle className="w-6 h-6 text-orange-500" />
             </div>
-            <AlertTriangle className="w-6 h-6 text-orange-500" />
+          </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Needs reorder</p>
           </div>
         </div>
         <div
-          className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 cursor-pointer hover:bg-red-50 transition-colors"
+          className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:bg-red-50 transition-colors"
           onClick={() => setStockFilter(stockFilter === 'out' ? 'all' : 'out')}
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Out of Stock</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">{outOfStockCount}</p>
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Out of Stock</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">{outOfStockCount}</p>
+              </div>
+              <TrendingDown className="w-6 h-6 text-red-500" />
             </div>
-            <TrendingDown className="w-6 h-6 text-red-500" />
+          </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Critical stock</p>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">Categories</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
-            {new Set(products.map(p => p.category)).size}
-          </p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4">
+            <p className="text-sm text-gray-600">Categories</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">
+              {new Set(products.map(p => p.category)).size}
+            </p>
+          </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Total types</p>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
+          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filters</h3>
+        </div>
+        <div className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -245,6 +278,7 @@ export default function InventoryPage() {
             ))}
           </div>
         </div>
+        </div>
       </div>
 
       {/* Products Table */}
@@ -253,7 +287,7 @@ export default function InventoryPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center overflow-hidden">
           <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No products found</h3>
           <p className="text-gray-600">
@@ -264,20 +298,20 @@ export default function InventoryPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-slate-100 border-b border-gray-200">
                 <tr>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">SKU</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Product Name</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Category</th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Stock Status</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">On Hand</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Reorder Point</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Cost</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Value</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Product Name</th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Stock Status</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">On Hand</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Reorder Point</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Cost</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Value</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>

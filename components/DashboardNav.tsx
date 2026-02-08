@@ -103,18 +103,18 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
   ]
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200">
+    <nav className="bg-slate-900 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-end pr-1">
+            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-end pr-1">
               <span className="text-white font-bold text-xl leading-none">R</span>
               <span className="text-blue-200 font-semibold text-[10px] leading-none mb-0.5">ai</span>
             </div>
             <div className="hidden md:block">
-              <h1 className="text-lg font-bold text-gray-900 leading-tight">
-                <span>refinish</span><span className="text-blue-600">AI</span>
+              <h1 className="text-lg font-bold leading-tight">
+                <span className="text-white">refinish</span><span className="text-blue-400">AI</span>
               </h1>
             </div>
           </Link>
@@ -131,8 +131,8 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                   href={item.href}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -148,8 +148,8 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                   onClick={() => { setMoreOpen(!moreOpen); setUserMenuOpen(false) }}
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     moreIsActive
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
                   <MoreHorizontal className="w-4 h-4" />
@@ -157,7 +157,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                   <ChevronDown className={`w-3 h-3 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {moreOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  <div className="absolute top-full left-0 mt-1.5 w-52 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
                     {moreNav.map((item) => {
                       const Icon = item.icon
                       const isActive = pathname === item.href
@@ -166,9 +166,9 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                           key={item.name}
                           href={item.href}
                           onClick={() => setMoreOpen(false)}
-                          className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                          className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${
                             isActive
-                              ? 'bg-blue-50 text-blue-700'
+                              ? 'bg-blue-50 text-blue-700 font-medium'
                               : 'text-gray-700 hover:bg-gray-50'
                           }`}
                         >
@@ -190,22 +190,22 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
               <button
                 onClick={() => { setUserMenuOpen(!userMenuOpen); setMoreOpen(false) }}
                 className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors ${
-                  userMenuOpen ? 'bg-gray-100' : 'hover:bg-gray-50'
+                  userMenuOpen ? 'bg-slate-700' : 'hover:bg-slate-800'
                 }`}
               >
-                <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-gray-600" />
+                <div className="w-7 h-7 bg-slate-700 rounded-full flex items-center justify-center ring-2 ring-slate-600">
+                  <User className="w-3.5 h-3.5 text-slate-300" />
                 </div>
-                <span className="hidden xl:block text-sm font-medium text-gray-700 max-w-[120px] truncate">
+                <span className="hidden xl:block text-sm font-medium text-slate-300 max-w-[120px] truncate">
                   {profile?.full_name?.split(' ')[0] || 'Account'}
                 </span>
-                <ChevronDown className={`w-3 h-3 text-gray-500 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {userMenuOpen && (
-                <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <div className="absolute top-full right-0 mt-1.5 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
                   {/* User info */}
-                  <div className="px-3 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">{profile?.full_name || user.email}</p>
+                  <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+                    <p className="text-sm font-semibold text-gray-900">{profile?.full_name || user.email}</p>
                     <p className="text-xs text-gray-500 capitalize">{userRole.replace('_', ' ')}</p>
                     {profile?.companies?.name && (
                       <p className="text-xs text-gray-400 mt-0.5 truncate">{profile.companies.name}</p>
@@ -220,9 +220,9 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                         key={item.name}
                         href={item.href}
                         onClick={() => setUserMenuOpen(false)}
-                        className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                        className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${
                           isActive
-                            ? 'bg-blue-50 text-blue-700'
+                            ? 'bg-blue-50 text-blue-700 font-medium'
                             : 'text-gray-700 hover:bg-gray-50'
                         }`}
                       >
@@ -235,7 +235,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                   <div className="border-t border-gray-100 mt-1 pt-1">
                     <button
                       onClick={handleSignOut}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full transition-colors"
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
                       Sign Out
@@ -248,7 +248,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+              className="lg:hidden p-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -257,7 +257,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-200 py-3">
+          <div className="lg:hidden border-t border-slate-700 py-3">
             <div className="space-y-0.5">
               {allNav.map((item) => {
                 const Icon = item.icon
@@ -269,8 +269,8 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -278,14 +278,14 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                   </Link>
                 )
               })}
-              <div className="border-t border-gray-200 mt-2 pt-2">
+              <div className="border-t border-slate-700 mt-2 pt-2">
                 <div className="px-4 py-2">
-                  <p className="text-sm font-medium text-gray-900">{profile?.full_name || user.email}</p>
-                  <p className="text-xs text-gray-500 capitalize">{userRole.replace('_', ' ')}</p>
+                  <p className="text-sm font-medium text-white">{profile?.full_name || user.email}</p>
+                  <p className="text-xs text-slate-400 capitalize">{userRole.replace('_', ' ')}</p>
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 w-full transition-colors"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-slate-800 w-full transition-colors"
                 >
                   <LogOut className="w-5 h-5" />
                   Sign Out
