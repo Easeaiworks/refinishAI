@@ -76,8 +76,10 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
           {/* Logo and Company */}
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-icon.png" alt="RefinishAI" className="w-10 h-10 rounded-lg" />
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-end pr-1.5">
+                <span className="text-white font-bold text-2xl leading-none">R</span>
+                <span className="text-blue-200 font-semibold text-xs leading-none mb-0.5">ai</span>
+              </div>
               <div className="hidden sm:block">
                 <h1 className="text-xl font-bold text-gray-900">
                   <span>refinish</span><span className="text-blue-600">AI</span>

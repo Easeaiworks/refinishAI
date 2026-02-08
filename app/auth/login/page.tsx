@@ -45,8 +45,15 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-full.png" alt="RefinishAI" className="h-24 mx-auto mb-4" />
+            <div className="inline-flex items-end justify-center mb-4">
+              <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-end pr-2">
+                <span className="text-white font-bold text-4xl leading-none">R</span>
+                <span className="text-blue-200 font-semibold text-sm leading-none mb-1">ai</span>
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">
+              <span>refinish</span><span className="text-blue-600">AI</span>
+            </h1>
             <p className="text-gray-600">Intelligent Inventory Forecasting</p>
           </div>
 
