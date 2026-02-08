@@ -1,26 +1,11 @@
 -- Fix overly permissive RLS policies from initial migration
 -- These "Allow all" policies let any authenticated user access any company's data
+-- NOTE: company_settings table does not exist in this database, so we skip it
 
-DROP POLICY IF EXISTS "Allow all on company_settings" ON company_settings;
+-- Drop permissive policies on tables that DO exist
 DROP POLICY IF EXISTS "Allow all on count_verifications" ON count_verifications;
 DROP POLICY IF EXISTS "Allow all on inventory_adjustments" ON inventory_adjustments;
 DROP POLICY IF EXISTS "Allow all on count_learning_data" ON count_learning_data;
-
--- company_settings: only company members can view, only admins can modify
-CREATE POLICY "Users view own company settings"
-  ON company_settings FOR SELECT TO authenticated
-  USING (
-    company_id IN (SELECT company_id FROM user_profiles WHERE id = auth.uid())
-  );
-
-CREATE POLICY "Admins manage own company settings"
-  ON company_settings FOR ALL TO authenticated
-  USING (
-    company_id IN (
-      SELECT company_id FROM user_profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'super_admin')
-    )
-  );
 
 -- count_verifications: company members can view, managers+ can modify
 CREATE POLICY "Users view own company count verifications"
@@ -54,7 +39,7 @@ CREATE POLICY "Managers manage own company inventory adjustments"
     )
   );
 
--- count_learning_data: company members can view, system/admins can modify
+-- count_learning_data: company members can view, admins can modify
 CREATE POLICY "Users view own company count learning data"
   ON count_learning_data FOR SELECT TO authenticated
   USING (
