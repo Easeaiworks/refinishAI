@@ -19,6 +19,27 @@ export async function POST(request: NextRequest) {
     // Get Supabase client
     const supabase = await createClient()
 
+    // Verify user is authenticated and belongs to the company
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Verify user belongs to this company and is admin
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('company_id, role')
+      .eq('id', user.id)
+      .single()
+
+    if (!userProfile || userProfile.company_id !== company_id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    if (!['admin', 'super_admin'].includes(userProfile.role)) {
+      return NextResponse.json({ error: 'Admin role required' }, { status: 403 })
+    }
+
     // Look up the plan from Supabase
     const plan = await getPlanById(supabase, plan_id)
     if (!plan) {
