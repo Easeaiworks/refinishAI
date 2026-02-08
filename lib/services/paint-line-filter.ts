@@ -34,13 +34,15 @@ export interface PaintLineFilter {
 }
 
 /**
- * Get the company's primary paint line vendor info
+ * Get the company's primary paint line vendor info.
+ * Supports cascading: if this company is a child location without its own
+ * paint line, falls back to the parent company's corporate_settings.
  */
 export async function getPaintLineFilter(
   supabase: SupabaseClient,
   companyId: string
 ): Promise<PaintLineFilter> {
-  // Query company_vendors for the primary vendor
+  // 1. Check this company's own primary vendor
   const { data: primaryVendors } = await supabase
     .from('company_vendors')
     .select('vendor_code, vendor_name, is_primary, discount_percent, account_number')
@@ -51,16 +53,56 @@ export async function getPaintLineFilter(
 
   const primary = primaryVendors?.[0] || null
 
+  if (primary) {
+    return {
+      companyId,
+      primaryVendor: {
+        vendorCode: primary.vendor_code,
+        vendorName: primary.vendor_name,
+        isPrimary: true,
+        discountPercent: primary.discount_percent || 0,
+        accountNumber: primary.account_number || null,
+      },
+      hasPaintLineContract: true,
+    }
+  }
+
+  // 2. If no own vendor, check if this is a child location and cascade from parent
+  const { data: company } = await supabase
+    .from('companies')
+    .select('parent_company_id, company_type')
+    .eq('id', companyId)
+    .single()
+
+  if (company?.parent_company_id && company.company_type === 'location') {
+    // Check parent's corporate_settings for paint_line
+    const { data: parentSetting } = await supabase
+      .from('corporate_settings')
+      .select('setting_value')
+      .eq('parent_company_id', company.parent_company_id)
+      .eq('setting_key', 'paint_line')
+      .single()
+
+    if (parentSetting?.setting_value?.vendor_code) {
+      return {
+        companyId,
+        primaryVendor: {
+          vendorCode: parentSetting.setting_value.vendor_code,
+          vendorName: parentSetting.setting_value.vendor_name || parentSetting.setting_value.vendor_code,
+          isPrimary: true,
+          discountPercent: 0,
+          accountNumber: null,
+        },
+        hasPaintLineContract: true,
+      }
+    }
+  }
+
+  // 3. No paint line contract found at any level
   return {
     companyId,
-    primaryVendor: primary ? {
-      vendorCode: primary.vendor_code,
-      vendorName: primary.vendor_name,
-      isPrimary: true,
-      discountPercent: primary.discount_percent || 0,
-      accountNumber: primary.account_number || null,
-    } : null,
-    hasPaintLineContract: !!primary,
+    primaryVendor: null,
+    hasPaintLineContract: false,
   }
 }
 

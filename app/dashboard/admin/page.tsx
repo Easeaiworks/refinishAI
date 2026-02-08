@@ -6,7 +6,8 @@ import {
   Shield, Building2, Users, TrendingUp,
   X, Plus, Trash2, Edit2, Package, Search,
   ChevronDown, ChevronRight, Mail, Key, UserPlus,
-  RefreshCw, Check, XCircle, Eye, EyeOff, Truck, DollarSign
+  RefreshCw, Check, XCircle, Eye, EyeOff, Truck, DollarSign,
+  MapPin, Lock
 } from 'lucide-react'
 
 interface Company {
@@ -18,10 +19,16 @@ interface Company {
   city?: string
   state?: string
   zip?: string
+  website?: string
   subscription_status: string
   created_at: string
+  parent_company_id?: string
+  company_type: 'single' | 'corporate' | 'location'
+  location_code?: string
+  is_headquarters?: boolean
   users?: UserProfile[]
   vendors?: CompanyVendor[]
+  child_locations?: Company[]
 }
 
 interface UserProfile {
@@ -31,6 +38,7 @@ interface UserProfile {
   role: string
   company_id: string
   is_active: boolean
+  is_corporate_user?: boolean
   created_at: string
 }
 
@@ -76,6 +84,19 @@ interface CompanyInsuranceRate {
   company?: Company
 }
 
+interface CorporateSettings {
+  parent_company_id: string
+  setting_key: string
+  setting_value: Record<string, any>
+  enforce_lock: boolean
+}
+
+interface LocationRow {
+  id: string
+  name: string
+  location_code: string
+}
+
 export default function SuperAdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [allUsers, setAllUsers] = useState<UserProfile[]>([])
@@ -94,6 +115,7 @@ export default function SuperAdminPage() {
   const [expandedCompany, setExpandedCompany] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string>('')
   const [activeTab, setActiveTab] = useState<'companies' | 'users' | 'vendors' | 'insurance'>('companies')
+  const [companiesViewMode, setCompaniesViewMode] = useState<'list' | 'hierarchy'>('list')
 
   // Modals
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false)
@@ -178,7 +200,7 @@ export default function SuperAdminPage() {
       .select('*', { count: 'exact', head: true })
 
     if (companiesData) {
-      const companiesWithData = companiesData.map(company => ({
+      const companiesWithData = companiesData.map((company: any) => ({
         ...company,
         users: usersData?.filter(u => u.company_id === company.id) || [],
         vendors: vendorsData?.filter(v => v.company_id === company.id) || []
@@ -192,7 +214,7 @@ export default function SuperAdminPage() {
       setCompanyInsuranceRates(insuranceRatesData || [])
       setStats({
         totalCompanies: companiesData.length,
-        activeCompanies: companiesData.filter(c => c.subscription_status === 'active').length,
+        activeCompanies: companiesData.filter((c: any) => c.subscription_status === 'active').length,
         totalUsers: usersData?.length || 0,
         totalProducts: productCount || 0
       })
@@ -217,6 +239,18 @@ export default function SuperAdminPage() {
       case 'staff': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  const getCompanyTypeBadge = (company: Company) => {
+    if (company.company_type === 'single') {
+      return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">Single</span>
+    } else if (company.company_type === 'corporate') {
+      const childCount = companies.filter(c => c.parent_company_id === company.id).length
+      return <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Corporate ({childCount})</span>
+    } else if (company.company_type === 'location') {
+      return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{company.location_code}</span>
+    }
+    return null
   }
 
   const updateCompanyStatus = async (companyId: string, status: string) => {
@@ -267,13 +301,11 @@ export default function SuperAdminPage() {
   }
 
   const toggleVendorPrimary = async (vendorId: string, companyId: string) => {
-    // First, unset all primary flags for this company
     await supabase
       .from('company_vendors')
       .update({ is_primary: false })
       .eq('company_id', companyId)
 
-    // Then set this one as primary
     await supabase
       .from('company_vendors')
       .update({ is_primary: true })
@@ -291,6 +323,10 @@ export default function SuperAdminPage() {
     u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const getChildLocations = (parentId: string) => {
+    return companies.filter(c => c.parent_company_id === parentId && c.company_type === 'location')
+  }
 
   if (userRole !== 'super_admin') {
     return (
@@ -443,185 +479,80 @@ export default function SuperAdminPage() {
 
       {/* Companies Tab */}
       {activeTab === 'companies' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : filteredCompanies.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No companies found</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {filteredCompanies.map((company) => (
-                <div key={company.id} className="hover:bg-gray-50">
-                  <div
-                    className="flex items-center justify-between p-4 cursor-pointer"
-                    onClick={() => setExpandedCompany(expandedCompany === company.id ? null : company.id)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <button className="text-gray-400">
-                        {expandedCompany === company.id ? (
-                          <ChevronDown className="w-5 h-5" />
-                        ) : (
-                          <ChevronRight className="w-5 h-5" />
-                        )}
-                      </button>
-                      <div>
-                        <p className="font-medium text-gray-900">{company.name}</p>
-                        <p className="text-sm text-gray-500">{company.email}</p>
-                      </div>
-                    </div>
+        <div className="space-y-4">
+          {/* View Toggle */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCompaniesViewMode('list')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                companiesViewMode === 'list'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              List View
+            </button>
+            <button
+              onClick={() => setCompaniesViewMode('hierarchy')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                companiesViewMode === 'hierarchy'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Hierarchy View
+            </button>
+          </div>
 
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-500">
-                        {company.users?.length || 0} users • {company.vendors?.length || 0} vendors
-                      </span>
-
-                      <select
-                        value={company.subscription_status}
-                        onChange={(e) => {
-                          e.stopPropagation()
-                          updateCompanyStatus(company.id, e.target.value)
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${getStatusColor(company.subscription_status)}`}
-                      >
-                        <option value="active">Active</option>
-                        <option value="trial">Trial</option>
-                        <option value="suspended">Suspended</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-
-                      <div className="flex gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingCompany(company)
-                            setShowAddCompanyModal(true)
-                          }}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedCompanyForVendor(company)
-                            setShowVendorModal(true)
-                          }}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
-                          title="Manage Vendors"
-                        >
-                          <Truck className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedCompanyForUser(company.id)
-                            setShowAddUserModal(true)
-                          }}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                          title="Add User"
-                        >
-                          <UserPlus className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            deleteCompany(company.id)
-                          }}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {expandedCompany === company.id && (
-                    <div className="px-4 pb-4 pl-14 bg-gray-50">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase">Created</p>
-                          <p className="font-medium">{new Date(company.created_at).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase">Phone</p>
-                          <p className="font-medium">{company.phone || '-'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase">Location</p>
-                          <p className="font-medium">{company.city && company.state ? `${company.city}, ${company.state}` : '-'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase">Vendors</p>
-                          <p className="font-medium">{company.vendors?.map(v => v.vendor_name).join(', ') || 'None assigned'}</p>
-                        </div>
-                      </div>
-
-                      {company.users && company.users.length > 0 && (
-                        <div className="mt-4">
-                          <p className="text-xs text-gray-500 uppercase mb-2">Users</p>
-                          <div className="space-y-2">
-                            {company.users.map(user => (
-                              <div
-                                key={user.id}
-                                className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-                                    user.is_active ? 'bg-blue-500' : 'bg-gray-400'
-                                  }`}>
-                                    {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-gray-900">{user.full_name || 'No name'}</p>
-                                    <p className="text-sm text-gray-500">{user.email}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <select
-                                    value={user.role}
-                                    onChange={(e) => updateUserRole(user.id, e.target.value)}
-                                    className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${getRoleColor(user.role)}`}
-                                  >
-                                    <option value="staff">Staff</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="super_admin">Super Admin</option>
-                                  </select>
-                                  <button
-                                    onClick={() => toggleUserActive(user.id, user.is_active)}
-                                    className={`p-1.5 rounded ${user.is_active ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
-                                  >
-                                    {user.is_active ? <Check className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedUser(user)
-                                      setShowResetPasswordModal(true)
-                                    }}
-                                    className="p-1.5 text-orange-600 hover:bg-orange-50 rounded"
-                                  >
-                                    <Key className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Companies List/Hierarchy */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            ) : filteredCompanies.length === 0 ? (
+              <div className="text-center py-12">
+                <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No companies found</p>
+              </div>
+            ) : companiesViewMode === 'list' ? (
+              <ListViewCompanies
+                filteredCompanies={filteredCompanies}
+                expandedCompany={expandedCompany}
+                setExpandedCompany={setExpandedCompany}
+                getCompanyTypeBadge={getCompanyTypeBadge}
+                updateCompanyStatus={updateCompanyStatus}
+                setEditingCompany={setEditingCompany}
+                setShowAddCompanyModal={setShowAddCompanyModal}
+                setSelectedCompanyForVendor={setSelectedCompanyForVendor}
+                setShowVendorModal={setShowVendorModal}
+                setSelectedCompanyForUser={setSelectedCompanyForUser}
+                setShowAddUserModal={setShowAddUserModal}
+                deleteCompany={deleteCompany}
+                updateUserRole={updateUserRole}
+                toggleUserActive={toggleUserActive}
+                setSelectedUser={setSelectedUser}
+                setShowResetPasswordModal={setShowResetPasswordModal}
+                getChildLocations={getChildLocations}
+              />
+            ) : (
+              <HierarchyViewCompanies
+                companies={filteredCompanies}
+                expandedCompany={expandedCompany}
+                setExpandedCompany={setExpandedCompany}
+                getCompanyTypeBadge={getCompanyTypeBadge}
+                updateCompanyStatus={updateCompanyStatus}
+                setEditingCompany={setEditingCompany}
+                setShowAddCompanyModal={setShowAddCompanyModal}
+                setSelectedCompanyForVendor={setSelectedCompanyForVendor}
+                setShowVendorModal={setShowVendorModal}
+                setSelectedCompanyForUser={setSelectedCompanyForUser}
+                setShowAddUserModal={setShowAddUserModal}
+                deleteCompany={deleteCompany}
+                getChildLocations={getChildLocations}
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -651,7 +582,12 @@ export default function SuperAdminPage() {
                           {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{user.full_name || 'No name'}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900">{user.full_name || 'No name'}</p>
+                            {user.is_corporate_user && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Corporate User</span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-500">{user.email}</p>
                         </div>
                       </div>
@@ -754,6 +690,9 @@ export default function SuperAdminPage() {
                   <tr key={company.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4">
                       <p className="font-medium text-gray-900">{company.name}</p>
+                      {company.company_type === 'corporate' && (
+                        <p className="text-xs text-gray-500 mt-1">Changes to primary vendor will cascade to all locations</p>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       {company.vendors && company.vendors.length > 0 ? (
@@ -960,8 +899,543 @@ export default function SuperAdminPage() {
   )
 }
 
-// Company Modal
+// List View Companies
+function ListViewCompanies({
+  filteredCompanies,
+  expandedCompany,
+  setExpandedCompany,
+  getCompanyTypeBadge,
+  updateCompanyStatus,
+  setEditingCompany,
+  setShowAddCompanyModal,
+  setSelectedCompanyForVendor,
+  setShowVendorModal,
+  setSelectedCompanyForUser,
+  setShowAddUserModal,
+  deleteCompany,
+  updateUserRole,
+  toggleUserActive,
+  setSelectedUser,
+  setShowResetPasswordModal,
+  getChildLocations
+}: any) {
+  return (
+    <div className="divide-y divide-gray-100">
+      {filteredCompanies.map((company: Company) => (
+        <div key={company.id} className="hover:bg-gray-50">
+          <div
+            className="flex items-center justify-between p-4 cursor-pointer"
+            onClick={() => setExpandedCompany(expandedCompany === company.id ? null : company.id)}
+          >
+            <div className="flex items-center gap-4 flex-1">
+              <button className="text-gray-400">
+                {expandedCompany === company.id ? (
+                  <ChevronDown className="w-5 h-5" />
+                ) : (
+                  <ChevronRight className="w-5 h-5" />
+                )}
+              </button>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-900">{company.name}</p>
+                  {getCompanyTypeBadge(company)}
+                </div>
+                {company.company_type === 'location' && company.parent_company_id && (
+                  <p className="text-xs text-gray-500">Code: {company.location_code}</p>
+                )}
+                <p className="text-sm text-gray-500">{company.email}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-500">
+                {company.users?.length || 0} users
+              </span>
+
+              <select
+                value={company.subscription_status}
+                onChange={(e) => {
+                  e.stopPropagation()
+                  updateCompanyStatus(company.id, e.target.value)
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${getStatusColor(company.subscription_status)}`}
+              >
+                <option value="active">Active</option>
+                <option value="trial">Trial</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+
+              <div className="flex gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingCompany(company)
+                    setShowAddCompanyModal(true)
+                  }}
+                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                  title="Edit"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedCompanyForVendor(company)
+                    setShowVendorModal(true)
+                  }}
+                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                  title="Manage Vendors"
+                >
+                  <Truck className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedCompanyForUser(company.id)
+                    setShowAddUserModal(true)
+                  }}
+                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                  title="Add User"
+                >
+                  <UserPlus className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteCompany(company.id)
+                  }}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                  title="Delete"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {expandedCompany === company.id && (
+            <div className="px-4 pb-4 pl-14 bg-gray-50">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Created</p>
+                  <p className="font-medium">{new Date(company.created_at).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Phone</p>
+                  <p className="font-medium">{company.phone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Location</p>
+                  <p className="font-medium">{company.city && company.state ? `${company.city}, ${company.state}` : '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase">Type</p>
+                  <p className="font-medium">{company.company_type}</p>
+                </div>
+              </div>
+
+              {/* Child Locations Section */}
+              {company.company_type === 'corporate' && (
+                <div className="mt-4 mb-4">
+                  <p className="text-xs text-gray-500 uppercase mb-2">Locations</p>
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    {getChildLocations(company.id).length === 0 ? (
+                      <div className="p-3 text-center text-gray-500 text-sm">No locations yet</div>
+                    ) : (
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                          <tr>
+                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-700">Location Name</th>
+                            <th className="text-left py-2 px-3 text-xs font-semibold text-gray-700">Code</th>
+                            <th className="text-center py-2 px-3 text-xs font-semibold text-gray-700">Users</th>
+                            <th className="text-right py-2 px-3 text-xs font-semibold text-gray-700">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getChildLocations(company.id).map((location: Company) => (
+                            <tr key={location.id} className="border-b border-gray-100">
+                              <td className="py-2 px-3">
+                                <p className="font-medium text-gray-900">{location.name}</p>
+                              </td>
+                              <td className="py-2 px-3">
+                                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">{location.location_code}</span>
+                              </td>
+                              <td className="py-2 px-3 text-center text-gray-600">{location.users?.length || 0}</td>
+                              <td className="py-2 px-3 text-right">
+                                <div className="flex gap-1 justify-end">
+                                  <button
+                                    onClick={() => {
+                                      setEditingCompany(location)
+                                      setShowAddCompanyModal(true)
+                                    }}
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                  >
+                                    <Edit2 className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteCompany(location.id)}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Users Section */}
+              {company.users && company.users.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs text-gray-500 uppercase mb-2">Users</p>
+                  <div className="space-y-2">
+                    {company.users.map(user => (
+                      <div
+                        key={user.id}
+                        className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                            user.is_active ? 'bg-blue-500' : 'bg-gray-400'
+                          }`}>
+                            {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">{user.full_name || 'No name'}</p>
+                              {user.is_corporate_user && (
+                                <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded font-medium">Corp</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={user.role}
+                            onChange={(e) => updateUserRole(user.id, e.target.value)}
+                            className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${getStatusColor(user.role)}`}
+                          >
+                            <option value="staff">Staff</option>
+                            <option value="manager">Manager</option>
+                            <option value="admin">Admin</option>
+                            <option value="super_admin">Super Admin</option>
+                          </select>
+                          <button
+                            onClick={() => toggleUserActive(user.id, user.is_active)}
+                            className={`p-1.5 rounded ${user.is_active ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}
+                          >
+                            {user.is_active ? <Check className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user)
+                              setShowResetPasswordModal(true)
+                            }}
+                            className="p-1.5 text-orange-600 hover:bg-orange-50 rounded"
+                          >
+                            <Key className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Hierarchy View Companies
+function HierarchyViewCompanies({
+  companies,
+  expandedCompany,
+  setExpandedCompany,
+  getCompanyTypeBadge,
+  updateCompanyStatus,
+  setEditingCompany,
+  setShowAddCompanyModal,
+  setSelectedCompanyForVendor,
+  setShowVendorModal,
+  setSelectedCompanyForUser,
+  setShowAddUserModal,
+  deleteCompany,
+  getChildLocations
+}: any) {
+  const corporateCompanies = companies.filter((c: Company) => c.company_type === 'corporate')
+  const singleCompanies = companies.filter((c: Company) => c.company_type === 'single')
+  const orphanedLocations = companies.filter((c: Company) => c.company_type === 'location' && !c.parent_company_id)
+
+  return (
+    <div className="divide-y divide-gray-100">
+      {/* Corporate Groups */}
+      {corporateCompanies.length > 0 && (
+        <>
+          <div className="p-4 bg-gray-50 font-semibold text-gray-700 text-sm">Corporate Groups</div>
+          {corporateCompanies.map((company: Company) => (
+            <div key={company.id} className="hover:bg-gray-50">
+              <div
+                className="flex items-center justify-between p-4 cursor-pointer"
+                onClick={() => setExpandedCompany(expandedCompany === company.id ? null : company.id)}
+              >
+                <div className="flex items-center gap-4 flex-1">
+                  <button className="text-gray-400">
+                    {expandedCompany === company.id ? (
+                      <ChevronDown className="w-5 h-5" />
+                    ) : (
+                      <ChevronRight className="w-5 h-5" />
+                    )}
+                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{company.name}</p>
+                      {getCompanyTypeBadge(company)}
+                    </div>
+                    <p className="text-sm text-gray-500">{company.email}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <select
+                    value={company.subscription_status}
+                    onChange={(e) => {
+                      e.stopPropagation()
+                      updateCompanyStatus(company.id, e.target.value)
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${getStatusColor(company.subscription_status)}`}
+                  >
+                    <option value="active">Active</option>
+                    <option value="trial">Trial</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+
+                  <div className="flex gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingCompany(company)
+                        setShowAddCompanyModal(true)
+                      }}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedCompanyForVendor(company)
+                        setShowVendorModal(true)
+                      }}
+                      className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                    >
+                      <Truck className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteCompany(company.id)
+                      }}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Child Locations */}
+              {expandedCompany === company.id && (
+                <div className="px-4 pb-4 pl-14 bg-gray-50 space-y-4">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase mb-2">Locations</p>
+                    {getChildLocations(company.id).length === 0 ? (
+                      <div className="text-sm text-gray-500 italic">No locations</div>
+                    ) : (
+                      <div className="space-y-1">
+                        {getChildLocations(company.id).map((location: Company) => (
+                          <div key={location.id} className="p-3 bg-white rounded-lg border border-gray-200 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <MapPin className="w-4 h-4 text-blue-600" />
+                              <div>
+                                <p className="font-medium text-gray-900">{location.name}</p>
+                                <p className="text-xs text-gray-500">{location.location_code} • {location.users?.length || 0} users</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingCompany(location)
+                                  setShowAddCompanyModal(true)
+                                }}
+                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => deleteCompany(location.id)}
+                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Single Location Companies */}
+      {singleCompanies.length > 0 && (
+        <>
+          <div className="p-4 bg-gray-50 font-semibold text-gray-700 text-sm">Single Location Companies</div>
+          {singleCompanies.map((company: Company) => (
+            <div key={company.id} className="hover:bg-gray-50">
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <Building2 className="w-5 h-5 text-gray-400" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{company.name}</p>
+                      {getCompanyTypeBadge(company)}
+                    </div>
+                    <p className="text-sm text-gray-500">{company.email}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <select
+                    value={company.subscription_status}
+                    onChange={(e) => updateCompanyStatus(company.id, e.target.value)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 cursor-pointer ${getStatusColor(company.subscription_status)}`}
+                  >
+                    <option value="active">Active</option>
+                    <option value="trial">Trial</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingCompany(company)
+                        setShowAddCompanyModal(true)
+                      }}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedCompanyForVendor(company)
+                        setShowVendorModal(true)
+                      }}
+                      className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                    >
+                      <Truck className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedCompanyForUser(company.id)
+                        setShowAddUserModal(true)
+                      }}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteCompany(company.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Orphaned Locations */}
+      {orphanedLocations.length > 0 && (
+        <>
+          <div className="p-4 bg-orange-50 font-semibold text-orange-700 text-sm">Orphaned Locations (No Parent)</div>
+          {orphanedLocations.map((company: Company) => (
+            <div key={company.id} className="hover:bg-gray-50">
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-4 flex-1">
+                  <MapPin className="w-5 h-5 text-orange-400" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{company.name}</p>
+                      {getCompanyTypeBadge(company)}
+                    </div>
+                    <p className="text-sm text-gray-500">{company.email}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => {
+                      setEditingCompany(company)
+                      setShowAddCompanyModal(true)
+                    }}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteCompany(company.id)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'super_admin': return 'bg-red-100 text-red-800'
+    case 'admin': return 'bg-purple-100 text-purple-800'
+    case 'manager': return 'bg-blue-100 text-blue-800'
+    case 'staff': return 'bg-gray-100 text-gray-800'
+    case 'active': return 'bg-green-100 text-green-800'
+    case 'trial': return 'bg-blue-100 text-blue-800'
+    case 'suspended': return 'bg-red-100 text-red-800'
+    case 'cancelled': return 'bg-gray-100 text-gray-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+// Company Modal with Multi-Location Support
 function CompanyModal({ company, onClose, onSave }: { company: Company | null; onClose: () => void; onSave: () => void }) {
+  const [companyType, setCompanyType] = useState<'single' | 'corporate'>(company?.company_type === 'corporate' ? 'corporate' : 'single')
   const [formData, setFormData] = useState({
     name: company?.name || '',
     email: company?.email || '',
@@ -970,10 +1444,28 @@ function CompanyModal({ company, onClose, onSave }: { company: Company | null; o
     city: company?.city || '',
     state: company?.state || '',
     zip: company?.zip || '',
+    website: company?.website || '',
     subscription_status: company?.subscription_status || 'trial'
   })
+  const [locations, setLocations] = useState<LocationRow[]>(
+    company?.company_type === 'location'
+      ? [{ id: company.id, name: company.name, location_code: company.location_code || '' }]
+      : [{ id: '1', name: '', location_code: '' }]
+  )
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
+
+  const addLocationRow = () => {
+    setLocations([...locations, { id: Date.now().toString(), name: '', location_code: '' }])
+  }
+
+  const removeLocationRow = (id: string) => {
+    setLocations(locations.filter(l => l.id !== id))
+  }
+
+  const updateLocationRow = (id: string, field: string, value: string) => {
+    setLocations(locations.map(l => l.id === id ? { ...l, [field]: value } : l))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -982,7 +1474,41 @@ function CompanyModal({ company, onClose, onSave }: { company: Company | null; o
       if (company) {
         await supabase.from('companies').update(formData).eq('id', company.id)
       } else {
-        await supabase.from('companies').insert([formData])
+        if (companyType === 'single') {
+          await supabase.from('companies').insert([{
+            ...formData,
+            company_type: 'single'
+          }])
+        } else {
+          const { data: parentData } = await supabase.from('companies').insert([{
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            zip: formData.zip,
+            website: formData.website,
+            subscription_status: formData.subscription_status,
+            company_type: 'corporate',
+            is_headquarters: true
+          }]).select()
+
+          if (parentData && parentData.length > 0) {
+            const parentId = parentData[0].id
+            const validLocations = locations.filter(l => l.name && l.location_code)
+            for (const loc of validLocations) {
+              await supabase.from('companies').insert([{
+                name: loc.name,
+                email: formData.email,
+                company_type: 'location',
+                location_code: loc.location_code,
+                parent_company_id: parentId,
+                subscription_status: formData.subscription_status
+              }])
+            }
+          }
+        }
       }
       onSave()
     } catch (error) {
@@ -994,24 +1520,80 @@ function CompanyModal({ company, onClose, onSave }: { company: Company | null; o
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-900">{company ? 'Edit Company' : 'Add New Company'}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
-            <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-            <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Company Type Selection - Show only on create */}
+          {!company && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-              <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              <label className="block text-sm font-medium text-gray-700 mb-3">Company Type *</label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="single"
+                    checked={companyType === 'single'}
+                    onChange={(e) => setCompanyType(e.target.value as 'single' | 'corporate')}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-gray-700">Single Location Company</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="corporate"
+                    checked={companyType === 'corporate'}
+                    onChange={(e) => setCompanyType(e.target.value as 'single' | 'corporate')}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-gray-700">Corporate / Multi-Location Group</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Base Company Info */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900">{companyType === 'corporate' ? 'Parent Company Information' : 'Company Information'}</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+              <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                <input type="url" value={formData.website} onChange={(e) => setFormData({ ...formData, website: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <input type="text" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <input type="text" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ZIP</label>
+                <input type="text" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -1023,7 +1605,69 @@ function CompanyModal({ company, onClose, onSave }: { company: Company | null; o
               </select>
             </div>
           </div>
-          <div className="flex gap-3 pt-4">
+
+          {/* Locations Section for Corporate */}
+          {companyType === 'corporate' && !company && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">Locations (at least 1 required)</h3>
+                <button
+                  type="button"
+                  onClick={addLocationRow}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Location
+                </button>
+              </div>
+              <div className="border border-gray-300 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-300">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Location Name</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Location Code</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {locations.map((loc, idx) => (
+                      <tr key={loc.id} className="border-b border-gray-200">
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            placeholder="e.g., Downtown Shop"
+                            value={loc.name}
+                            onChange={(e) => updateLocationRow(loc.id, 'name', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                          />
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            placeholder="e.g., LOC-001"
+                            value={loc.location_code}
+                            onChange={(e) => updateLocationRow(loc.id, 'location_code', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                          />
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeLocationRow(loc.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4 border-t border-gray-200">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400">{saving ? 'Saving...' : 'Save'}</button>
           </div>
@@ -1033,13 +1677,23 @@ function CompanyModal({ company, onClose, onSave }: { company: Company | null; o
   )
 }
 
-// Add User Modal
+// Add User Modal with Corporate User Support
 function AddUserModal({ companies, defaultCompanyId, onClose, onSave }: { companies: Company[]; defaultCompanyId: string; onClose: () => void; onSave: () => void }) {
-  const [formData, setFormData] = useState({ email: '', full_name: '', password: '', company_id: defaultCompanyId || '', role: 'staff' })
+  const [formData, setFormData] = useState({
+    email: '',
+    full_name: '',
+    password: '',
+    company_id: defaultCompanyId || '',
+    role: 'staff',
+    is_corporate_user: false
+  })
   const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const supabase = createClient()
+
+  const selectedCompany = companies.find(c => c.id === formData.company_id)
+  const isCorporateParent = selectedCompany?.company_type === 'corporate'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1056,7 +1710,8 @@ function AddUserModal({ companies, defaultCompanyId, onClose, onSave }: { compan
         await supabase.from('user_profiles').update({
           company_id: formData.company_id,
           role: formData.role,
-          full_name: formData.full_name
+          full_name: formData.full_name,
+          is_corporate_user: isCorporateParent && formData.is_corporate_user
         }).eq('id', authData.user.id)
       }
       onSave()
@@ -1109,6 +1764,17 @@ function AddUserModal({ companies, defaultCompanyId, onClose, onSave }: { compan
               <option value="super_admin">Super Admin</option>
             </select>
           </div>
+          {isCorporateParent && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_corporate_user}
+                onChange={(e) => setFormData({ ...formData, is_corporate_user: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <span className="text-sm text-gray-700">Corporate access (all locations)</span>
+            </label>
+          )}
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400">{saving ? 'Creating...' : 'Create User'}</button>

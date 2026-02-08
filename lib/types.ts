@@ -229,6 +229,81 @@ export interface UserAdjustmentSummary {
   adjustments: AdjustmentEntry[];
 }
 
+// ── Multi-Location / Company Hierarchy Types ─────────────────
+
+export type CompanyType = 'single' | 'corporate' | 'location';
+
+export interface CompanyWithHierarchy {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  website?: string;
+  subscription_status: string;
+  created_at: string;
+  updated_at?: string;
+  // Hierarchy fields
+  parent_company_id?: string | null;
+  company_type: CompanyType;
+  location_code?: string | null;
+  is_headquarters: boolean;
+  // Joined / computed
+  childLocations?: CompanyWithHierarchy[];
+  userCount?: number;
+  parentCompany?: { id: string; name: string };
+}
+
+export interface CorporateSettingRow {
+  id: string;
+  parent_company_id: string;
+  setting_key: string;
+  setting_value: Record<string, any>;
+  enforce_lock: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserProfileExtended {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'super_admin' | 'admin' | 'manager' | 'staff';
+  company_id: string;
+  is_active: boolean;
+  is_corporate_user: boolean;
+  created_at: string;
+  last_login_at?: string;
+  // Joined
+  company?: { id: string; name: string; company_type: CompanyType };
+}
+
+export interface NewCompanyData {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  website?: string;
+}
+
+export interface NewLocationData {
+  name: string;
+  location_code: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  is_headquarters?: boolean;
+}
+
 // ── Purchase Order Types ──────────────────────────────────────
 
 export interface PurchaseOrder {

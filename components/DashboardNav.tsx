@@ -43,6 +43,9 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
     router.refresh()
   }
 
+  const isCorporateUser = profile?.is_corporate_user === true
+  const isCorporateParent = profile?.companies?.company_type === 'corporate'
+
   // Simplified navigation - grouped logically
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['staff', 'manager', 'admin', 'super_admin'] },
@@ -53,7 +56,13 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
     { name: 'Analytics & Reports', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Reorder', href: '/dashboard/reorder', icon: ShoppingCart, roles: ['manager', 'admin', 'super_admin'] },
     { name: 'Insurance', href: '/dashboard/labor-rates', icon: DollarSign, roles: ['admin', 'super_admin'] },
+    // Corporate admin: manage all locations from one place
+    ...(isCorporateUser && isCorporateParent ? [
+      { name: 'Corporate', href: '/dashboard/corporate', icon: Building2, roles: ['admin', 'super_admin'] },
+    ] : []),
     { name: 'Settings', href: '/dashboard/company', icon: Settings, roles: ['admin', 'super_admin'] },
+    // Super admin: platform administration
+    { name: 'Admin', href: '/dashboard/admin', icon: Shield, roles: ['super_admin'] },
   ]
 
   const allowedNav = navigation.filter(item => 
