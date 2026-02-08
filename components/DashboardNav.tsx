@@ -1,16 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
-  Upload,
-  TrendingUp,
-  Search,
   Package,
   ClipboardList,
-  Users,
   Shield,
   LogOut,
   Menu,
@@ -22,7 +18,10 @@ import {
   Settings,
   HelpCircle,
   FileText,
-  Receipt
+  Receipt,
+  ChevronDown,
+  MoreHorizontal,
+  User
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -35,6 +34,10 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const moreRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   const handleSignOut = async () => {
@@ -43,65 +46,93 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
     router.refresh()
   }
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false)
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const isCorporateUser = profile?.is_corporate_user === true
   const isCorporateParent = profile?.companies?.company_type === 'corporate'
+  const userRole = profile?.role || 'staff'
+  const isAdmin = userRole === 'admin' || userRole === 'super_admin'
+  const isManager = isAdmin || userRole === 'manager'
 
-  // Simplified navigation - grouped logically
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Inventory', href: '/dashboard/inventory', icon: Package, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Estimates', href: '/dashboard/estimates', icon: FileText, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Invoices', href: '/dashboard/invoices', icon: Receipt, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Counts', href: '/dashboard/counts', icon: ClipboardList, roles: ['staff', 'manager', 'admin', 'super_admin'] },
-    { name: 'Analytics & Reports', href: '/dashboard/analytics', icon: BarChart3, roles: ['manager', 'admin', 'super_admin'] },
-    { name: 'Reorder', href: '/dashboard/reorder', icon: ShoppingCart, roles: ['manager', 'admin', 'super_admin'] },
-    { name: 'Insurance', href: '/dashboard/labor-rates', icon: DollarSign, roles: ['admin', 'super_admin'] },
-    // Corporate admin: manage all locations from one place
-    ...(isCorporateUser && isCorporateParent ? [
-      { name: 'Corporate', href: '/dashboard/corporate', icon: Building2, roles: ['admin', 'super_admin'] },
-    ] : []),
-    { name: 'Settings', href: '/dashboard/company', icon: Settings, roles: ['admin', 'super_admin'] },
-    // Super admin: platform administration
-    { name: 'Admin', href: '/dashboard/admin', icon: Shield, roles: ['super_admin'] },
+  // Primary nav - always visible
+  const primaryNav = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
+    { name: 'Estimates', href: '/dashboard/estimates', icon: FileText },
+    { name: 'Invoices', href: '/dashboard/invoices', icon: Receipt },
   ]
 
-  const allowedNav = navigation.filter(item => 
-    item.roles.includes(profile?.role || 'staff')
-  )
+  // "More" dropdown items - role-filtered
+  const moreNav = [
+    { name: 'Counts', href: '/dashboard/counts', icon: ClipboardList, show: true },
+    { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3, show: isManager },
+    { name: 'Reorder', href: '/dashboard/reorder', icon: ShoppingCart, show: isManager },
+    { name: 'Insurance', href: '/dashboard/labor-rates', icon: DollarSign, show: isAdmin },
+    ...(isCorporateUser && isCorporateParent ? [
+      { name: 'Corporate', href: '/dashboard/corporate', icon: Building2, show: isAdmin },
+    ] : []),
+  ].filter(item => item.show)
+
+  // Check if any "More" item is active
+  const moreIsActive = moreNav.some(item => pathname === item.href)
+
+  // User menu items
+  const userMenuNav = [
+    { name: 'Settings', href: '/dashboard/company', icon: Settings, show: isAdmin },
+    { name: 'Admin', href: '/dashboard/admin', icon: Shield, show: userRole === 'super_admin' },
+    { name: 'Help', href: '/dashboard/help', icon: HelpCircle, show: true },
+  ].filter(item => item.show)
+
+  // All items for mobile
+  const allNav = [
+    ...primaryNav.map(item => ({ ...item, show: true })),
+    ...moreNav,
+    ...userMenuNav,
+  ]
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo and Company */}
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-end pr-1.5">
-                <span className="text-white font-bold text-2xl leading-none">R</span>
-                <span className="text-blue-200 font-semibold text-xs leading-none mb-0.5">ai</span>
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-gray-900">
-                  <span>refinish</span><span className="text-blue-600">AI</span>
-                </h1>
-                <p className="text-xs text-gray-500">{profile?.companies?.name || 'Loading...'}</p>
-              </div>
-            </Link>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-14">
+          {/* Logo */}
+          <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-end pr-1">
+              <span className="text-white font-bold text-xl leading-none">R</span>
+              <span className="text-blue-200 font-semibold text-[10px] leading-none mb-0.5">ai</span>
+            </div>
+            <div className="hidden md:block">
+              <h1 className="text-lg font-bold text-gray-900 leading-tight">
+                <span>refinish</span><span className="text-blue-600">AI</span>
+              </h1>
+            </div>
+          </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
-            {allowedNav.map((item) => {
+          <div className="hidden lg:flex items-center gap-0.5">
+            {/* Primary items */}
+            {primaryNav.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -109,29 +140,111 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                 </Link>
               )
             })}
+
+            {/* More dropdown */}
+            {moreNav.length > 0 && (
+              <div ref={moreRef} className="relative">
+                <button
+                  onClick={() => { setMoreOpen(!moreOpen); setUserMenuOpen(false) }}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    moreIsActive
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <MoreHorizontal className="w-4 h-4" />
+                  More
+                  <ChevronDown className={`w-3 h-3 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {moreOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                    {moreNav.map((item) => {
+                      const Icon = item.icon
+                      const isActive = pathname === item.href
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          onClick={() => setMoreOpen(false)}
+                          className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                            isActive
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          {item.name}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* User Menu */}
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-900">{profile?.full_name || user.email}</p>
-              <p className="text-xs text-gray-500 capitalize">{profile?.role?.replace('_', ' ')}</p>
+          {/* Right side */}
+          <div className="flex items-center gap-2">
+            {/* User menu dropdown */}
+            <div ref={userMenuRef} className="relative hidden lg:block">
+              <button
+                onClick={() => { setUserMenuOpen(!userMenuOpen); setMoreOpen(false) }}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors ${
+                  userMenuOpen ? 'bg-gray-100' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-gray-600" />
+                </div>
+                <span className="hidden xl:block text-sm font-medium text-gray-700 max-w-[120px] truncate">
+                  {profile?.full_name?.split(' ')[0] || 'Account'}
+                </span>
+                <ChevronDown className={`w-3 h-3 text-gray-500 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {userMenuOpen && (
+                <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  {/* User info */}
+                  <div className="px-3 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{profile?.full_name || user.email}</p>
+                    <p className="text-xs text-gray-500 capitalize">{userRole.replace('_', ' ')}</p>
+                    {profile?.companies?.name && (
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{profile.companies.name}</p>
+                    )}
+                  </div>
+                  {/* Menu items */}
+                  {userMenuNav.map((item) => {
+                    const Icon = item.icon
+                    const isActive = pathname === item.href
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setUserMenuOpen(false)}
+                        className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {item.name}
+                      </Link>
+                    )
+                  })}
+                  {/* Sign out */}
+                  <div className="border-t border-gray-100 mt-1 pt-1">
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <Link
-              href="/dashboard/help"
-              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              title="Help & Documentation"
-            >
-              <HelpCircle className="w-5 h-5" />
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Sign Out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-            
+
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -144,9 +257,9 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-200 py-4">
-            <div className="space-y-1">
-              {allowedNav.map((item) => {
+          <div className="lg:hidden border-t border-gray-200 py-3">
+            <div className="space-y-0.5">
+              {allNav.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href
                 return (
@@ -154,7 +267,7 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                     key={item.name}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       isActive
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-700 hover:bg-gray-100'
@@ -165,18 +278,19 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
                   </Link>
                 )
               })}
-              <Link
-                href="/dashboard/help"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  pathname === '/dashboard/help'
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <HelpCircle className="w-5 h-5" />
-                Help & Docs
-              </Link>
+              <div className="border-t border-gray-200 mt-2 pt-2">
+                <div className="px-4 py-2">
+                  <p className="text-sm font-medium text-gray-900">{profile?.full_name || user.email}</p>
+                  <p className="text-xs text-gray-500 capitalize">{userRole.replace('_', ' ')}</p>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 w-full transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         )}
