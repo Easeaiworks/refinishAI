@@ -4,7 +4,8 @@ import { useState } from 'react'
 import {
   BookOpen, ChevronDown, ChevronRight, MessageCircle, Mail,
   Zap, Box, FileText, BarChart3, Settings, CreditCard,
-  Search, AlertCircle, CheckCircle2
+  Search, AlertCircle, CheckCircle2, ShoppingCart, ClipboardList,
+  Upload, Car, Building2, Users, Brain
 } from 'lucide-react'
 
 type FAQItem = {
@@ -49,224 +50,300 @@ export default function HelpPage() {
     {
       id: 'getting-started',
       title: 'Getting Started',
-      description: 'Quick start guide and fundamental concepts',
+      description: 'What refinishAI does and how to set up your shop',
       icon: <Zap className="w-6 h-6" />,
       faqs: [
         {
-          question: 'What is RefinishAI?',
-          answer: 'RefinishAI is a comprehensive auto body shop management SaaS platform designed to streamline your operations. It helps you manage inventory, create estimates and invoices, track physical counts, analyze sales trends, and automate reordering—all from one intuitive dashboard.'
+          question: 'What is refinishAI?',
+          answer: 'refinishAI is an inventory forecasting and management platform built for auto body and collision repair shops. It learns your inventory patterns by analyzing your historical estimates, invoices, and inventory data. Over time it builds a picture of what you use, how fast you use it, and what you need to order. Every calculation uses straightforward math you can verify with a calculator. The AI layer runs 100 iterations of these formulas to confirm accuracy and only offers forecasting guidance when it achieves 97.8% or higher accuracy against the manual calculation. If it falls below that threshold, it reverts to manual mode and will not display AI-generated forecasts.'
         },
         {
-          question: 'How do I get started with my first estimate?',
-          answer: 'Navigate to the Estimates section and click "Create New Estimate". Fill in the customer information, add line items for parts and labor, select your labor rates (configured per insurance company), and include paint products from your inventory. You can save as draft or finalize to send to the customer.'
+          question: 'How does the AI forecasting work?',
+          answer: 'The system collects data from three sources: estimates (upcoming work), invoices (completed jobs), and inventory uploads (current stock). It calculates average consumption rates, lead times, reorder points, and cost projections using standard formulas. The AI engine then runs 100 iterations of these calculations to cross-check accuracy. If the result matches the manual calculation at 97.8% or better, the forecast is displayed with a confidence score. If not, the system falls back to manual calculations only. This means every number you see is grounded in verifiable math, not a black box.'
         },
         {
-          question: 'What are the minimum requirements to set up my shop?',
-          answer: 'You will need to: (1) Complete your Company Profile in Settings, (2) Set up at least one Insurance Labor Rate tier, (3) Add paint products to your Inventory, and (4) Configure Reorder levels for inventory management. Once complete, you can begin creating estimates immediately.'
+          question: 'What are the first steps to set up my shop?',
+          answer: 'Start by completing your Company Profile in Settings with your shop name, address, and contact details. Next, upload your historical data (estimates, invoices, and product catalog) through the Upload page using CSV or Excel files. Then set up your Insurance Labor Rates for each insurer you work with. Finally, invite your team members and assign roles. The more historical data you upload, the faster the system learns your consumption patterns and the more accurate forecasts become.'
         },
         {
-          question: 'Can I manage multiple locations?',
-          answer: 'Yes! If you have a corporate account, you can manage multiple shop locations from one dashboard. Visit Settings → Corporate to add and manage locations, assign users to specific locations, and view consolidated or location-specific analytics.'
+          question: 'What does the Dashboard show me?',
+          answer: 'The Dashboard is your daily overview. It shows four key metrics at a glance: Active Estimates (pending work), Completed Jobs, Products Tracked, and Total Inventory Value. Below that you will find Quick Actions to upload data, look up a vehicle, view predictions, or manage inventory. If you are new, a Getting Started section guides you through the initial setup steps.'
         },
         {
-          question: 'How do I invite team members?',
-          answer: 'Go to Settings, then User Management, and click "Invite User". Enter their email address and assign a role (Admin, Manager, or Technician). They will receive an invitation email with a link to set up their account. Admins can manage all features, Managers have operational access, and Technicians have limited view-only access.'
+          question: 'Can I manage multiple shop locations?',
+          answer: 'Yes. Corporate accounts can manage multiple locations from one dashboard. Go to Corporate under the More menu to add locations with a name and code. You can assign staff to specific locations, enforce a paint line contract across all shops, and view users across the entire organization. Each location maintains its own inventory and labor rate configurations.'
         },
         {
-          question: 'Where can I see an overview of my shop operations?',
-          answer: 'The Dashboard provides a complete overview showing: Inventory Value (total worth of current stock), Low Stock Alerts (items below minimum levels), Recent Estimates (pending and completed), and Recent Invoices (payment status). This is your command center for daily operations.'
+          question: 'How do I invite my team?',
+          answer: 'Navigate to the Users page through your profile menu. Click Invite User and enter their email with a role assignment. There are four roles: Staff has view-only access, Manager can view and make adjustments, Admin has full management capabilities, and Super Admin has system-wide control. Each person receives an email invitation to set up their account.'
+        }
+      ]
+    },
+    {
+      id: 'upload',
+      title: 'Uploading Your Data',
+      description: 'Import estimates, invoices, and products to train the system',
+      icon: <Upload className="w-6 h-6" />,
+      faqs: [
+        {
+          question: 'What data can I upload?',
+          answer: 'You can upload three types of data: Estimates (repair quotes with customer, vehicle, and line item details), Invoices (completed job records with costs and labor breakdown), and Products (your product catalog with SKUs, categories, costs, and quantities). Accepted file formats are CSV, Excel (.xlsx/.xls), and PDF.'
+        },
+        {
+          question: 'How does the upload process work?',
+          answer: 'Select the data type you want to import, then drag and drop your file or click to browse. The system reads your columns and auto-detects field mappings based on column names. You can adjust any mapping manually using the dropdown selectors. Preview the first five rows to confirm everything looks correct, then click Import. The system reports how many records were imported successfully and lists any errors.'
+        },
+        {
+          question: 'Why is uploading historical data important?',
+          answer: 'The forecasting engine learns from your history. The more estimates, invoices, and inventory records you upload, the better it understands your consumption patterns, seasonal trends, and reorder timing. With enough data the AI can generate accurate projections for material costs, labor costs, and stock requirements weeks in advance.'
+        },
+        {
+          question: 'Can I see my upload history?',
+          answer: 'Yes. The Upload page shows a history table at the bottom listing every file you have imported, including the filename, data type, date, number of records imported, and status. This makes it easy to track what data has already been loaded.'
         }
       ]
     },
     {
       id: 'inventory',
       title: 'Inventory Management',
-      description: 'Track paint products, quantities, and values',
+      description: 'Track products, stock levels, and adjustments',
       icon: <Box className="w-6 h-6" />,
       faqs: [
         {
           question: 'How do I add products to inventory?',
-          answer: 'Navigate to Inventory and click "Add Product". Enter the product name, SKU, category (e.g., Base Coats, Clear Coats, Primers), unit cost, quantity on hand, and reorder settings. You can also upload products in bulk via CSV. Products are immediately searchable and available for use in estimates.'
+          answer: 'Go to the Inventory page and click Add Product. Enter the SKU, product name, category (Base Coat, Clear Coat, Primer, Hardener, Reducer, etc.), unit type, unit cost, supplier, coverage per unit, waste factor, and lead time. You can also set a reorder point and minimum quantity. For bulk imports, use the Upload page with a CSV or Excel file of your product catalog.'
         },
         {
-          question: 'What do the reorder settings mean?',
-          answer: 'Reorder Settings control automated suggestions: Minimum Stock Level is when the system suggests reordering, Lead Time (days) is how long supplier delivery takes, and Safety Stock is extra buffer to maintain. The system calculates your Reorder Point automatically based on average daily usage and these parameters.'
+          question: 'What do the inventory stat cards show?',
+          answer: 'The top of the Inventory page shows five cards: Total Products (how many SKUs you track), Inventory Value (sum of quantity on hand times unit cost for all products), Low Stock (items at or below their reorder point), Out of Stock (items with zero quantity), and Total Categories (how many product categories you have). Click the Low Stock or Out of Stock cards to filter the list to just those items.'
         },
         {
-          question: 'How do I find and filter products?',
-          answer: 'Use the Search bar to find products by name or SKU. Click Filter by Category to narrow results (Base Coats, Clear Coats, Primers, etc.). You can also sort by quantity on hand, value, or reorder status. The Inventory view shows color-coded alerts for low stock items.'
-        },
-        {
-          question: 'What happens during physical inventory counts?',
-          answer: 'Go to Counts and start a new count cycle. Your team scans or manually enters quantities for each product. The system compares entered quantities to system records and flags discrepancies. Once verified, you can reconcile the differences and update your system inventory to match actual stock.'
+          question: 'How do I adjust stock quantities?',
+          answer: 'Click the adjustment icon on any product row. Choose the adjustment type: Add (receiving new stock), Remove (damage, loss, or usage), or Set (correct to an exact count). Enter the quantity and the system calculates the new total with a live preview. Every adjustment is logged with your name, the timestamp, and the type of change for full audit traceability.'
         },
         {
           question: 'How is inventory value calculated?',
-          answer: 'Total Inventory Value = Sum of (Quantity On Hand × Unit Cost) for all products. This appears on your Dashboard and is updated in real-time as you add/remove items or complete estimates. This helps you understand your cash tied up in inventory.'
+          answer: 'Total Inventory Value is the sum of Quantity On Hand multiplied by Unit Cost for every product. This updates in real time as you add products, adjust quantities, or complete estimates. It appears on both the Inventory page and the main Dashboard so you always know how much cash is tied up in stock.'
         },
         {
-          question: 'Can I adjust inventory quantities manually?',
-          answer: 'Yes. In the Inventory view, you can manually adjust quantities for damage, loss, or correction. Each adjustment is logged with a timestamp and user who made the change, providing full traceability for audit purposes.'
+          question: 'What do the stock status colors mean?',
+          answer: 'Red (Critical) means the product is at zero quantity. Amber (Low) means the quantity is at or below the reorder point. Green (Adequate) means stock is healthy. Blue (Overstocked) means the quantity is more than three times the reorder point, which may indicate excess inventory tying up cash.'
+        },
+        {
+          question: 'Can I search and filter my inventory?',
+          answer: 'Yes. Use the search bar to find products by name or SKU. Filter by category using the dropdown, or filter by stock status (All, In Stock, Low, Out of Stock). You can combine search with filters to narrow results quickly.'
+        }
+      ]
+    },
+    {
+      id: 'counts',
+      title: 'Physical Inventory Counts',
+      description: 'Reconcile actual stock with system records',
+      icon: <ClipboardList className="w-6 h-6" />,
+      faqs: [
+        {
+          question: 'How do I start a physical count?',
+          answer: 'Go to the Counts page and click New Count. A three-step wizard guides you through: Step 1 is selecting the count type (Full Count, Spot Check, Cycle Count, or Category Count). Step 2 is choosing which items to count (all items, by category, or specific products). Step 3 is reviewing your selections and adding optional notes. Click Start Count to begin.'
+        },
+        {
+          question: 'How do I record counts?',
+          answer: 'Once a count is started, you see a table of products with their expected system quantity. Enter the actual quantity you physically counted for each item. The system automatically calculates the variance (difference between expected and actual) and color-codes it green for overages and red for shortages. A progress bar shows how many items you have counted.'
+        },
+        {
+          question: 'Can I scan count sheets instead of typing?',
+          answer: 'Yes. Print a count sheet using the Print button, have your team fill it in by hand on the shop floor, then use the Scan button to upload the completed sheet as a JPG, PNG, or PDF. The OCR engine reads the handwritten quantities and presents the results with confidence percentages for each item. Review and apply the scanned values to your count.'
+        },
+        {
+          question: 'What happens after a count is completed?',
+          answer: 'Completed counts go into a Pending Review status. A manager or admin reviews the variances, approves or rejects the count, and the system reconciles the differences by updating inventory quantities to match the physical count. The variance history is stored permanently for audit and reporting purposes.'
+        },
+        {
+          question: 'What count types are available?',
+          answer: 'Full Count covers every product in your inventory. Spot Check lets you quickly verify a handful of specific items. Cycle Count is a rolling approach where you count a subset of products on a regular schedule. Category Count lets you count all products within specific categories like Clear Coats or Primers.'
         }
       ]
     },
     {
       id: 'estimates-invoices',
       title: 'Estimates & Invoices',
-      description: 'Create repair estimates and generate invoices',
+      description: 'Track repair quotes and completed job history',
       icon: <FileText className="w-6 h-6" />,
       faqs: [
         {
-          question: 'What should I include in an estimate?',
-          answer: 'An estimate includes: Customer information (name, contact), Vehicle details (year, make, model), Line Items (parts with quantities and prices), Labor (by type: body, refinish, mechanical, structural, aluminum, glass—each with hours and insurance-specific rates), and Paint products (with quantities and costs). The system calculates total automatically.'
+          question: 'How do estimates work in refinishAI?',
+          answer: 'The Estimates page shows all your repair quotes. Each estimate includes the estimate number, customer name, vehicle details (year, make, model), insurance company, status, and total amount. Expand any estimate to see the full line item breakdown with descriptions, quantities, unit prices, and totals. Line items are tagged by type such as Refinish, Parts, or Labor.'
         },
         {
-          question: 'How are labor rates determined?',
-          answer: 'Labor rates are configured per insurance company in Settings → Insurance (Labor Rates). You set hourly rates for each labor type (Body, Refinish, Mechanical, Structural, Aluminum, Glass) per insurer. When creating an estimate, select the relevant insurance, and labor rates auto-populate, ensuring accuracy and consistency.'
+          question: 'What estimate statuses are available?',
+          answer: 'Estimates move through four stages: Quoted (initial quote created), Approved (customer approved the work), In Progress (repair is underway), and Completed (job finished). You can filter by status using the dropdown, and each status has a distinct color badge for quick visual scanning.'
         },
         {
-          question: 'Can I save estimates as drafts?',
-          answer: 'Yes! Create an estimate and save it as Draft. You can edit it anytime before finalizing. Once finalized, you can generate a PDF for customer review, email it directly, or convert it to an invoice once the customer approves the work.'
+          question: 'How are labor rates handled?',
+          answer: 'Labor rates are configured per insurance company in the Insurance (Labor Rates) page. You set hourly rates for six labor categories: Body, Refinish, Mechanical, Structural, Aluminum, and Glass. You can also flag each insurer as a DRP (Direct Repair Program) partner and store their contact information. When creating estimates, these rates automatically apply based on the selected insurance company.'
         },
         {
-          question: 'How do I convert an estimate to an invoice?',
-          answer: 'Open a finalized estimate and click "Convert to Invoice". The system copies all details (customer, items, labor, parts, paint) into an invoice. You can then mark tasks as completed, adjust quantities if actual usage differs, and track payment status (Unpaid, Partial, Paid).'
+          question: 'What does the Invoices page show?',
+          answer: 'The Invoices page tracks completed jobs. Summary cards show Total Invoices, Total Revenue, Average Job Value, and Jobs This Month. Expand any invoice to see a full breakdown including labor hours and costs by type (Body, Refinish, Mechanical, Structural, Aluminum), parts cost, materials cost, sublet cost, deductible, and individual line items. This data feeds into the analytics and forecasting engine.'
         },
         {
-          question: 'What payment statuses are available?',
-          answer: 'Invoices track payment in three states: Unpaid (no payment received), Partial (partial amount paid—useful for insurance splits), and Paid (fully paid). Click "Mark as Paid" or "Record Payment" to update status. Payment history is maintained for your records.'
-        },
-        {
-          question: 'Can I generate reports from estimates and invoices?',
-          answer: 'Yes. Navigate to Analytics to view Sales Trends (revenue over time), Popular Products (most-used items), Inventory Turnover (how quickly items sell), and AI-powered Recommendations based on your usage patterns. You can also export estimate/invoice data to CSV for external analysis.'
+          question: 'How do estimates and invoices feed the AI?',
+          answer: 'Every estimate tells the system about upcoming work and expected material needs. Every invoice tells it what was actually used and at what cost. Over time this builds a consumption profile for your shop. The AI uses this history to project future material costs, identify waste patterns, suggest reorder quantities, and forecast how many jobs and how much material you will need in the coming weeks.'
         }
       ]
     },
     {
       id: 'analytics',
-      title: 'Analytics & Insights',
-      description: 'Sales trends, inventory analysis, and AI recommendations',
+      title: 'Analytics & Reports',
+      description: 'AI-powered projections, waste analysis, and inventory reports',
       icon: <BarChart3 className="w-6 h-6" />,
       faqs: [
         {
-          question: 'What analytics are available?',
-          answer: 'RefinishAI provides: Sales Trends (revenue and job volume over time), Inventory Turnover (how quickly each product sells), Popular Products (top 10 products by quantity used), and AI-powered Recommendations (suggesting products to reorder based on usage patterns and seasonal trends).'
+          question: 'What does the Analytics tab show?',
+          answer: 'The Analytics tab provides AI-powered projections with a selectable forecast period (2, 4, 8, or 12 weeks). It shows a Confidence Score indicating how reliable the forecast is based on your data volume. Key metrics include Projected Jobs, Material Cost, Labor Cost, and Total Projected Cost. Below that you see a Cost Breakdown by Category with trend indicators, a Waste Analysis section, AI Recommendations, and Top Products by Consumption patterns.'
         },
         {
-          question: 'How does AI power recommendations?',
-          answer: 'The AI analyzes your historical usage data, seasonal patterns, current stock levels, and lead times. It suggests reorder quantities that optimize your cash flow while preventing stockouts. These recommendations are guidance only—you always review and approve before ordering.'
+          question: 'How does the confidence score work?',
+          answer: 'The confidence score ranges from 0 to 100 percent. It is calculated from three factors: how many invoices you have (up to 40 points for 50+ invoices), how much consumption history exists (up to 40 points for 200+ records), and a base score of 20 points. At 70% or above the system considers it high confidence. Between 40-70% is moderate, meaning more data will improve accuracy. Below 40% is low confidence and the system recommends uploading more historical data.'
         },
         {
-          question: 'What do Sales Trends tell me?',
-          answer: 'Sales Trends show total revenue and job volume over selectable time periods (weekly, monthly, quarterly). Identify your busiest seasons, track growth, and compare performance month-to-month. This helps with budgeting, staffing, and inventory planning.'
+          question: 'What is the Waste Analysis?',
+          answer: 'Waste Analysis compares actual product consumption against expected usage based on each product waste factor. It shows your overall waste rate as a percentage, the total dollar cost of waste, and a breakdown by category showing which product types have the highest waste. A six-month trend chart shows whether waste is improving or worsening over time. The system also generates specific waste reduction tips based on your data.'
         },
         {
-          question: 'How can I use Inventory Turnover data?',
-          answer: 'Inventory Turnover shows how many times each product sells annually. Fast-moving items (high turnover) might benefit from higher stock levels. Slow-moving items might indicate overstocking. This helps you optimize inventory investment and reduce waste.'
+          question: 'What are AI Recommendations?',
+          answer: 'These are actionable suggestions generated from your data. They include cost warnings when a category shows a spending increase over 10%, order recommendations when you have multiple scheduled jobs coming up, optimization opportunities for categories making up more than 25% of your material costs, and general insights about usage patterns. Each recommendation shows a priority level (high, medium, low) and potential savings where applicable.'
         },
         {
-          question: 'Can I export analytics data?',
-          answer: 'Yes. From each Analytics section, click "Export" to download data as CSV. You can also customize date ranges and filters before exporting. This is useful for presentations, external analysis, or integration with other business tools.'
+          question: 'What does the Inventory Reports tab provide?',
+          answer: 'The Reports tab generates detailed inventory reports with filters for date range, item search, manufacturer, category, and product line. It shows summary cards for Total SKUs, Inventory Value, Critical Items, Low Stock, Counts Completed, and Net Adjustments. Four report sub-tabs are available: Inventory Detail (full product list with quantities and values), Year-on-Year Comparison (current vs prior year with change calculations), Count History (all physical counts with variance data), and Adjustments by User (who made what changes and when).'
         },
         {
-          question: 'How often is analytics data updated?',
-          answer: 'Analytics refresh in real-time as estimates and invoices are created and marked as paid. Dashboard widgets update every few hours. For the most current data, manually refresh your browser or revisit the Analytics section.'
+          question: 'Can I export and print reports?',
+          answer: 'Yes. Reports can be exported to CSV for use in spreadsheets or other tools. You can also print reports using the Print button which generates a formatted print-ready document with your company name, date range, summary metrics, inventory detail table, count history, adjustments by user, and signature lines for management review.'
         }
       ]
     },
     {
       id: 'reorder',
-      title: 'Automated Reordering',
-      description: 'Inventory reorder suggestions and supplier management',
-      icon: <AlertCircle className="w-6 h-6" />,
+      title: 'Reorder & Purchase Planning',
+      description: 'Smart reorder suggestions and purchase order generation by manufacturer',
+      icon: <ShoppingCart className="w-6 h-6" />,
       faqs: [
         {
-          question: 'How does automated reordering work?',
-          answer: 'The Reorder module monitors your inventory levels against configured minimums. When stock falls below your Reorder Point, the system flags the product and suggests an order quantity based on your Par Level and lead time. Review suggestions daily to stay ahead of stockouts.'
+          question: 'How does purchase planning work?',
+          answer: 'The Reorder page analyzes your current stock levels against reorder points and generates prioritized suggestions. Items are classified as Critical (out of stock or nearly out), Urgent (below reorder point), or Normal (approaching reorder level). The system calculates a suggested order quantity for each item based on your average usage, lead time, and safety stock settings. Summary cards show how many items need attention and the estimated total order cost.'
         },
         {
-          question: 'What are Reorder Points and Par Levels?',
-          answer: 'Reorder Point: The level at which you should order more stock (typically: average daily usage × lead time + safety stock). Par Level: The target maximum you want to maintain (typically: reorder point + average daily usage × order cycle). The system calculates both automatically from your settings.'
+          question: 'Can I create purchase orders?',
+          answer: 'Yes. Review the reorder suggestions, adjust any quantities in the editable order column, then click Create Purchase Order. The system generates a PO grouped by manufacturer/supplier, showing item count, total cost, and primary vendor. You can add notes and save the PO for tracking. This means you get a ready-to-send purchase order organized by manufacturer without having to build it manually.'
         },
         {
-          question: 'Can I manage suppliers in RefinishAI?',
-          answer: 'Yes. Go to Reorder → Supplier Management to add and track suppliers. Store supplier names, contact info, typical lead times, and pricing. When creating reorder suggestions, select the appropriate supplier, and the system can help you generate purchase orders.'
+          question: 'Can I export purchase orders?',
+          answer: 'Yes. The Reorder page supports exporting to PDF, Excel, and CSV formats. You can also print the reorder list directly. These exports are organized by supplier/manufacturer so you can send each vendor their specific order.'
         },
         {
-          question: 'How do I act on reorder suggestions?',
-          answer: 'In the Reorder dashboard, review flagged items. Click on a product to see the suggested quantity, cost estimate, and supplier. Approve the suggestion (or adjust quantity if needed) and generate a purchase order, then mark as ordered. Track order status until delivery.'
+          question: 'How do I see details for a reorder suggestion?',
+          answer: 'Expand any row to see four detail sections: Inventory Details (unit type, minimum order, order multiple, days of stock remaining), Supplier Info (supplier name, manufacturer, supplier SKU, lead time in days), Usage Analysis (average daily and weekly usage, last count date, last order date), and Order Calculation (a breakdown showing how the suggested quantity was determined).'
         },
         {
-          question: 'What if I want custom reorder rules for certain products?',
-          answer: 'Each product has customizable Reorder Settings. For critical items, increase Safety Stock. For seasonal products, adjust Lead Time expectations. For items you buy in bulk, set Order Multiple (e.g., "only buy in cases of 6"). These settings fine-tune automatic suggestions to fit your business.'
+          question: 'Can I filter reorder suggestions?',
+          answer: 'Yes. Filter by priority (Critical, Urgent, Normal), by category, or by supplier. You can also search by SKU, product name, or supplier name. This helps you focus on the most important items first or prepare orders for a specific vendor.'
         },
         {
-          question: 'How do I prevent stockouts?',
-          answer: 'Use the Low Stock Alerts on your Dashboard to monitor items approaching minimum levels. Review the Reorder section daily. Set Safety Stock appropriately for critical items. Integrate supplier lead times accurately. When in doubt, reorder earlier rather than risk a stockout during a busy period.'
+          question: 'Is there an order history?',
+          answer: 'Yes. The Order History tab shows all previously created purchase orders with their dates, item counts, total values, and status. This gives you a record of what was ordered and when.'
+        }
+      ]
+    },
+    {
+      id: 'predictions',
+      title: 'AI Predictions & Forecasting',
+      description: 'How the AI engine generates and validates inventory forecasts',
+      icon: <Brain className="w-6 h-6" />,
+      faqs: [
+        {
+          question: 'How does the prediction engine work?',
+          answer: 'The Predictions page generates AI-powered reorder recommendations. Click Generate Prediction and the system analyzes your current stock levels, reorder points, lead times, and consumption patterns to produce a two-week forecast. It shows which products need to be ordered, how many to order, estimated cost, and the date you should order by to avoid a stockout. Each prediction includes an AI Reasoning section explaining why each item was selected.'
+        },
+        {
+          question: 'What does the 100-iteration validation mean?',
+          answer: 'When generating a forecast, the AI engine runs the same set of calculations 100 times using standard consumption rate formulas, lead time planning, and reorder point math. It compares each iteration against the manual (straight calculator) result. If the AI result matches the manual calculation at 97.8% accuracy or higher across all iterations, the forecast is approved and displayed. If accuracy falls below 97.8%, the system discards the AI forecast and falls back to showing only the manual calculation. This ensures you never see an unreliable prediction.'
+        },
+        {
+          question: 'Can I edit the suggested order quantities?',
+          answer: 'Yes. The prediction table has an editable Order Quantity column. If you know you need more or less of something, change the number directly. Edited quantities show an "edited" badge so you can tell which items were manually adjusted versus system-suggested. The total order value updates automatically as you make changes.'
+        },
+        {
+          question: 'What is the prediction workflow?',
+          answer: 'Predictions move through three stages: Generated (the system has created the forecast), Reviewed (you have looked at it and confirmed the numbers), and Ordered (you have placed the order with your suppliers). Update the status as you work through the process. Previous predictions are listed in a sidebar so you can reference past forecasts.'
+        },
+        {
+          question: 'How does the system explain its reasoning?',
+          answer: 'Each prediction item includes an AI Reasoning section that explains in plain language why the item was flagged. For example: "Current stock is 2 units, average weekly usage is 4.5 units, lead time is 7 days. At current consumption this product will be depleted in approximately 3 days." This transparency lets you verify every recommendation against your own knowledge of the shop.'
+        }
+      ]
+    },
+    {
+      id: 'vehicles',
+      title: 'Vehicle Lookup',
+      description: 'VIN decoding and panel dimension reference',
+      icon: <Car className="w-6 h-6" />,
+      faqs: [
+        {
+          question: 'How does VIN lookup work?',
+          answer: 'Enter a VIN (11 to 17 characters) on the Vehicles page and click Decode VIN. The system decodes the VIN and returns the vehicle year, make, model, body style, and engine details (cylinder count and displacement). It also shows panel dimensions with surface area in square feet for each body panel. This data helps with accurate material estimation for refinish work.'
+        },
+        {
+          question: 'What are the panel dimension multipliers?',
+          answer: 'Panel areas are adjusted by body style to reflect real-world size differences. Trucks use a 1.3x multiplier, SUVs use 1.2x, Sedans use 1.0x (baseline), and Coupes use 0.9x. This means a hood on a truck will show a larger area than the same panel on a coupe, giving you more accurate material calculations for coverage estimation.'
         }
       ]
     },
     {
       id: 'admin',
-      title: 'Admin & Settings',
-      description: 'Company profile, users, insurance rates, and preferences',
+      title: 'Settings & Administration',
+      description: 'Company profile, insurance rates, users, and corporate management',
       icon: <Settings className="w-6 h-6" />,
       faqs: [
         {
+          question: 'What is in Company Settings?',
+          answer: 'The Company Settings page has two tabs. Company Profile lets you edit your shop name, email, phone, website, and full address. It also shows your subscription status and member-since date. The Paint Line Contract section lets you select your contracted manufacturer (such as PPG, Axalta, or Sherwin-Williams), which can be enforced across all locations in a corporate setup.'
+        },
+        {
           question: 'How do I configure insurance labor rates?',
-          answer: 'Go to Settings → Insurance (Labor Rates). Add or edit insurance companies. For each insurer, set hourly rates for all labor types: Body, Refinish, Mechanical, Structural, Aluminum, and Glass. These rates auto-populate in estimates when you select an insurance company, ensuring customers are billed correctly.'
+          answer: 'Go to Insurance (Labor Rates) under the More menu. Click New Insurer to add an insurance company, or Configure Rates to edit existing ones. For each insurer, set hourly rates for Body, Refinish, Mechanical, Structural, Aluminum, and Glass labor. You can also flag the insurer as a DRP partner and store their account number and contact details. These rates automatically apply when that insurer is selected on an estimate.'
         },
         {
-          question: 'What does the Company Profile section include?',
-          answer: 'Company Profile stores your shop name, address, phone, email, logo, tax ID, and default labor rates. This information appears on generated estimates and invoices. Keep it current to maintain professional documents and accurate tax/billing records.'
+          question: 'What user roles are available?',
+          answer: 'Four roles control access: Staff has view-only access to estimates and invoices. Manager can view everything and make inventory adjustments, run counts, and generate predictions. Admin has full management access including settings, user management, and billing. Super Admin has system-wide control across all companies and the licensing administration panel.'
         },
         {
-          question: 'How do I manage user roles and permissions?',
-          answer: 'Go to Settings → User Management. Assign roles: Admin (full access to all features), Manager (operational access, cannot modify company settings), Technician (limited view-only access to estimates/invoices). Track who did what with activity logs for compliance and accountability.'
-        },
-        {
-          question: 'Can I set preferences for my account?',
-          answer: 'Yes. In Settings → Preferences, customize: currency/units, date format, default invoice terms, email notification settings, and dashboard layout. These apply to your user account. Admins can also set company-wide defaults that apply to all team members.'
-        },
-        {
-          question: 'How does the corporate multi-location feature work?',
-          answer: 'If you are on a corporate plan, go to Settings, then Corporate to add and manage multiple shop locations. Assign staff to locations, view location-specific analytics, and consolidate or segment data as needed. Each location maintains its own inventory and can have different labor rates.'
-        },
-        {
-          question: 'How do I manage data security and backups?',
-          answer: 'RefinishAI automatically encrypts all data and maintains daily backups. Your data is never shared. You can download a backup of your data anytime from Settings → Data Export. For advanced security needs (IP whitelisting, SSO), contact our support team.'
+          question: 'How does Corporate multi-location management work?',
+          answer: 'The Corporate page (under More) is available to corporate admin and super admin users. It has three tabs: Locations (add and manage shop locations with codes), Group Settings (set a paint line contract manufacturer that applies to all locations), and Users (view and manage all team members across every location with their roles and status).'
         }
       ]
     },
     {
       id: 'billing',
       title: 'Billing & Subscription',
-      description: 'Plans, invoices, and payment management',
+      description: 'Plans, payment, and subscription management',
       icon: <CreditCard className="w-6 h-6" />,
       faqs: [
         {
-          question: 'What subscription plans does RefinishAI offer?',
-          answer: 'We offer tiered plans: Starter (single location, basic features), Professional (multi-user, all core features), and Enterprise (unlimited locations, advanced features, dedicated support). Visit the Billing section to see current plan details, pricing, and usage limits.'
+          question: 'What subscription plans are available?',
+          answer: 'refinishAI offers three plans: Starter (single location, core features, 5 users included), Professional (all core features plus analytics, reorder planning, and priority support, 5 users included), and Enterprise (everything in Professional plus multi-location corporate management, dedicated support, and 5 users included). Additional users can be purchased on any plan. Plans are available on monthly or annual billing.'
         },
         {
-          question: 'How is my subscription billed?',
-          answer: 'Subscriptions are billed monthly or annually (annual saves 20%). Billing occurs on the first of the month for the next month of service. You can change your plan anytime; changes take effect on your next billing cycle.'
+          question: 'Where do I manage my subscription?',
+          answer: 'Go to Billing through the user menu. The page shows your current plan, billing period, status, renewal date, and user limit with a progress bar. Below that you can browse available plans and subscribe through Stripe checkout. Invoice history and payment history tables show all past charges and payments with their status.'
         },
         {
-          question: 'Where can I view my billing history?',
-          answer: 'Go to Billing → Invoices to view and download all past invoices. Each invoice shows the plan, billing period, amount charged, and payment status. Invoices are generated automatically and available immediately after payment.'
+          question: 'What happens when my subscription is expiring?',
+          answer: 'A yellow banner appears at the top of every page when your subscription is within 14 days of expiring, showing how many days remain. If your subscription expires, the banner turns red with a link to the Billing page. Admin users see a Manage Billing link directly in the banner.'
         },
         {
-          question: 'How do I update my payment method?',
-          answer: 'In Billing → Payment Method, update your credit card or banking information. Your payment method is encrypted and secured. Failed payments trigger email notifications so you can update immediately.'
-        },
-        {
-          question: 'What happens if a payment fails?',
-          answer: 'We will send you email notifications. You have 3 days to update your payment method before access restrictions apply. If you need help, contact support@refinishai.com immediately. We want to help you resolve payment issues quickly.'
-        },
-        {
-          question: 'Can I cancel my subscription?',
-          answer: 'Yes. Go to Billing, then Plan, and click "Cancel Subscription". Your access continues through the end of the current billing period. All your data remains available for export. If you cancel mid-month on an annual plan, we will prorate a refund.'
+          question: 'How are payments processed?',
+          answer: 'Payments are processed securely through Stripe. refinishAI never stores your credit card details. When you subscribe or renew, you are redirected to a Stripe checkout page where you enter payment information. Stripe handles all payment processing, and you receive confirmation when the transaction completes.'
         }
       ]
     }
@@ -292,34 +369,69 @@ export default function HelpPage() {
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold">Help & Knowledge Base</h1>
-              <p className="text-slate-300 mt-2">Complete guide to RefinishAI features and operations</p>
+              <h1 className="text-4xl font-bold">How to Use refinishAI</h1>
+              <p className="text-slate-300 mt-2">Complete guide to every feature in the platform</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-12 space-y-8">
-        {/* Quick Start Guide */}
+        {/* How It Works Overview */}
+        <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-6 border-b border-slate-200">
+            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+              <Brain className="w-7 h-7 text-blue-600" />
+              How refinishAI Works
+            </h2>
+            <p className="text-slate-600 mt-2">A forecasting inventory tool that learns your shop</p>
+          </div>
+          <div className="p-6 space-y-4">
+            <p className="text-slate-700 leading-relaxed">
+              refinishAI is built on a simple principle: analyze what your shop has used in the past to predict what it will need in the future. Upload your historical estimates, invoices, and product inventory. The system calculates consumption rates, lead times, waste factors, and reorder points using standard formulas that you can verify with a calculator.
+            </p>
+            <p className="text-slate-700 leading-relaxed">
+              The AI layer takes these same formulas and runs 100 iterations to confirm accuracy. If the AI result matches the manual calculation at 97.8% accuracy or higher, the forecast is approved and displayed with a confidence score. If it falls below that threshold, the system reverts to manual calculations only. You never see an unverified number.
+            </p>
+            <div className="grid md:grid-cols-4 gap-4 mt-6">
+              {[
+                { num: 1, title: 'Upload Data', desc: 'Import your estimates, invoices, and product catalog' },
+                { num: 2, title: 'System Learns', desc: 'Calculates usage rates, patterns, and reorder timing' },
+                { num: 3, title: 'AI Validates', desc: '100 iterations at 97.8% accuracy or falls back to manual' },
+                { num: 4, title: 'You Decide', desc: 'Review forecasts, create POs by manufacturer, and order' }
+              ].map(step => (
+                <div key={step.num} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-4 text-center border border-slate-200">
+                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold mx-auto mb-3">
+                    {step.num}
+                  </div>
+                  <p className="font-semibold text-slate-900 text-sm">{step.title}</p>
+                  <p className="text-xs text-slate-500 mt-2">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Quick Start */}
         <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-6 border-b border-slate-200">
             <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
               <Zap className="w-7 h-7 text-amber-600" />
               Quick Start Guide
             </h2>
-            <p className="text-slate-600 mt-2">Get up and running in 5 minutes</p>
+            <p className="text-slate-600 mt-2">Set up your shop in five steps</p>
           </div>
           <div className="p-6 space-y-4">
             <div className="grid md:grid-cols-5 gap-4">
               {[
-                { num: 1, title: 'Complete Profile', desc: 'Settings → Company Profile' },
-                { num: 2, title: 'Add Products', desc: 'Inventory → Add Paint Products' },
-                { num: 3, title: 'Set Labor Rates', desc: 'Settings → Insurance Rates' },
-                { num: 4, title: 'Invite Team', desc: 'Settings → User Management' },
-                { num: 5, title: 'Create Estimate', desc: 'Estimates → New Estimate' }
+                { num: 1, title: 'Company Profile', desc: 'Settings: name, address, contact info' },
+                { num: 2, title: 'Upload History', desc: 'Upload: estimates, invoices, products' },
+                { num: 3, title: 'Labor Rates', desc: 'Insurance: rates per insurer' },
+                { num: 4, title: 'Invite Team', desc: 'Users: add staff with roles' },
+                { num: 5, title: 'Start Using', desc: 'Dashboard: forecasts and reorders' }
               ].map(step => (
                 <div key={step.num} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-4 text-center border border-slate-200">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold mx-auto mb-3">
+                  <div className="w-8 h-8 bg-amber-600 text-white rounded-full flex items-center justify-center font-bold mx-auto mb-3">
                     {step.num}
                   </div>
                   <p className="font-semibold text-slate-900 text-sm">{step.title}</p>
@@ -346,7 +458,7 @@ export default function HelpPage() {
         {searchQuery && !hasSearchResults && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
             <AlertCircle className="w-8 h-8 text-amber-600 mx-auto mb-2" />
-            <p className="text-slate-700">No articles found matching "{searchQuery}". Try a different search term.</p>
+            <p className="text-slate-700">No articles found matching &ldquo;{searchQuery}&rdquo;. Try a different search term.</p>
           </div>
         )}
 
@@ -400,7 +512,7 @@ export default function HelpPage() {
                         </button>
 
                         {isExpanded && (
-                          <div className="px-6 pb-6 text-slate-700 leading-relaxed bg-white">
+                          <div className="px-6 pb-6 text-slate-700 leading-relaxed bg-white ml-9">
                             {faq.answer}
                           </div>
                         )}
@@ -417,9 +529,9 @@ export default function HelpPage() {
         <section className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg overflow-hidden">
           <div className="px-8 py-12">
             <div className="max-w-2xl">
-              <h2 className="text-3xl font-bold text-white mb-4">Still Have Questions?</h2>
+              <h2 className="text-3xl font-bold text-white mb-4">Need Help?</h2>
               <p className="text-blue-100 mb-8 text-lg">
-                Our support team is here to help. We typically respond within 2 hours during business hours.
+                Our support team typically responds within 2 hours during business hours.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <a
@@ -447,7 +559,7 @@ export default function HelpPage() {
         {/* Footer */}
         <div className="text-center py-8 text-slate-600 border-t border-slate-200">
           <p className="text-sm">
-            RefinishAI Knowledge Base • Last updated February 2025
+            refinishAI Knowledge Base &bull; Last updated February 2026
           </p>
         </div>
       </div>
