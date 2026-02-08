@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 80">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#1a2744"/>
+    </linearGradient>
+    <linearGradient id="accent2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="12" width="56" height="56" rx="12" fill="url(#bg2)"/>
+  <text x="10" y="53" font-family="Arial,Helvetica,sans-serif" font-size="36" font-weight="bold" fill="white">R</text>
+  <text x="30" y="53" font-family="Arial,Helvetica,sans-serif" font-size="36" font-weight="bold" fill="url(#accent2)">ai</text>
+  <text x="68" y="44" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="700" fill="#1a2744">refinish</text>
+  <text x="222" y="44" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="700" fill="#2563eb">AI</text>
+  <text x="68" y="62" font-family="Arial,Helvetica,sans-serif" font-size="11" fill="#6b7280" letter-spacing="2">AUTO REFINISH INTELLIGENCE</text>
+</svg>

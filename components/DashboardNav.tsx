@@ -76,11 +76,12 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
           {/* Logo and Company */}
           <div className="flex items-center gap-4">
             <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">R</span>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-icon.svg" alt="RefinishAI" className="w-10 h-10 rounded-lg" />
               <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-gray-900">RefinishAI</h1>
+                <h1 className="text-xl font-bold text-gray-900">
+                  <span>refinish</span><span className="text-blue-600">AI</span>
+                </h1>
                 <p className="text-xs text-gray-500">{profile?.companies?.name || 'Loading...'}</p>
               </div>
             </Link>
