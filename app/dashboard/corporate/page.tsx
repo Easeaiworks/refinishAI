@@ -211,13 +211,17 @@ export default function CorporateDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-          <Building2 className="w-6 h-6 text-purple-600" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{company?.name || 'Corporate'}</h1>
-          <p className="text-gray-600">Manage locations, users, and group settings</p>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">{company?.name || 'Corporate'}</h1>
+              <p className="text-slate-300 mt-1 text-sm">Manage locations, users, and group settings</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -237,7 +241,7 @@ export default function CorporateDashboardPage() {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border p-5">
+        <div className="overflow-hidden rounded-xl bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Locations</p>
@@ -245,8 +249,9 @@ export default function CorporateDashboardPage() {
             </div>
             <MapPin className="w-8 h-8 text-blue-500" />
           </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100 -mx-5 -mb-5 mt-5"></div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-5">
+        <div className="overflow-hidden rounded-xl bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Users</p>
@@ -254,8 +259,9 @@ export default function CorporateDashboardPage() {
             </div>
             <Users className="w-8 h-8 text-green-500" />
           </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100 -mx-5 -mb-5 mt-5"></div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-5">
+        <div className="overflow-hidden rounded-xl bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Paint Line</p>
@@ -265,8 +271,9 @@ export default function CorporateDashboardPage() {
             </div>
             <Palette className="w-8 h-8 text-purple-500" />
           </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100 -mx-5 -mb-5 mt-5"></div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-5">
+        <div className="overflow-hidden rounded-xl bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Status</p>
@@ -276,24 +283,27 @@ export default function CorporateDashboardPage() {
             </div>
             <Shield className="w-8 h-8 text-gray-400" />
           </div>
+          <div className="bg-gray-50 px-5 py-2.5 border-t border-gray-100 -mx-5 -mb-5 mt-5"></div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b">
-        {(['locations', 'settings', 'users'] as TabType[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors capitalize ${
-              activeTab === tab
-                ? 'border-purple-600 text-purple-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {tab === 'settings' ? 'Group Settings' : tab}
-          </button>
-        ))}
+      <div className="bg-gray-50 border-b border-gray-200">
+        <div className="flex gap-0">
+          {(['locations', 'settings', 'users'] as TabType[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`capitalize transition-colors ${
+                activeTab === tab
+                  ? 'bg-white text-blue-700 font-semibold border-b-2 border-blue-600 px-4 py-3 text-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-4 py-3 text-sm font-medium'
+              }`}
+            >
+              {tab === 'settings' ? 'Group Settings' : tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Locations Tab */}
@@ -303,7 +313,7 @@ export default function CorporateDashboardPage() {
             <p className="text-gray-600">{totalLocations} location{totalLocations !== 1 ? 's' : ''} in this group</p>
             <button
               onClick={() => setShowAddLocation(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg"
             >
               <Plus className="w-4 h-4" />
               Add Location
@@ -339,7 +349,7 @@ export default function CorporateDashboardPage() {
                   <button
                     onClick={handleAddLocation}
                     disabled={saving}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg disabled:opacity-50"
                   >
                     {saving ? 'Adding...' : 'Add'}
                   </button>
@@ -356,21 +366,21 @@ export default function CorporateDashboardPage() {
 
           {/* Locations Table */}
           {(company?.childLocations || []).length === 0 ? (
-            <div className="bg-white rounded-lg border p-12 text-center">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-12 text-center">
               <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Locations Yet</h3>
               <p className="text-gray-500">Add your first location to get started.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-slate-100 border-b border-gray-200">
                   <tr>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Location</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Code</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Users</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Code</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Users</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -416,36 +426,40 @@ export default function CorporateDashboardPage() {
       {activeTab === 'settings' && (
         <div className="space-y-6">
           {/* Paint Line */}
-          <div className="bg-white rounded-lg border p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Palette className="w-5 h-5 text-purple-600" />
-              <h3 className="text-lg font-semibold">Paint Line Contract</h3>
-              <span title="Enforced across all locations"><Lock className="w-4 h-4 text-amber-500" /></span>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Setting a paint line here applies to ALL locations in this group. Each location will only see products
-              from this paint manufacturer in their reorder reports.
-            </p>
-            <div className="flex items-center gap-4">
-              <div className="w-64">
-                <select
-                  value={getPaintLineSetting().vendor_code || ''}
-                  onChange={e => handleSavePaintLine(e.target.value)}
-                  disabled={saving}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="">No paint line selected</option>
-                  {paintManufacturers.map(m => (
-                    <option key={m.code} value={m.code}>{m.name}</option>
-                  ))}
-                </select>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-gray-50 px-6 py-3.5 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <Palette className="w-5 h-5 text-purple-600" />
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Paint Line Contract</h3>
+                <span title="Enforced across all locations"><Lock className="w-4 h-4 text-amber-500" /></span>
               </div>
-              {getPaintLineSetting().vendor_name && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                  <Palette className="w-3.5 h-3.5" />
-                  {getPaintLineSetting().vendor_name}
-                </span>
-              )}
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Setting a paint line here applies to ALL locations in this group. Each location will only see products
+                from this paint manufacturer in their reorder reports.
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="w-64">
+                  <select
+                    value={getPaintLineSetting().vendor_code || ''}
+                    onChange={e => handleSavePaintLine(e.target.value)}
+                    disabled={saving}
+                    className="w-full border rounded-lg px-3 py-2"
+                  >
+                    <option value="">No paint line selected</option>
+                    {paintManufacturers.map(m => (
+                      <option key={m.code} value={m.code}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {getPaintLineSetting().vendor_name && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                    <Palette className="w-3.5 h-3.5" />
+                    {getPaintLineSetting().vendor_name}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -479,14 +493,14 @@ export default function CorporateDashboardPage() {
             <p className="text-sm text-gray-500">{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}</p>
           </div>
 
-          <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-slate-100 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">User</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Location</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Role</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">User</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Location</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y">

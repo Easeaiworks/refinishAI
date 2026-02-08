@@ -540,72 +540,84 @@ export default function CountsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Physical Inventory Counts</h1>
-          <p className="text-gray-600 mt-2">Reconcile actual stock with system records</p>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Physical Inventory Counts</h1>
+              <p className="text-slate-300 mt-1 text-sm">Reconcile actual stock with system records</p>
+            </div>
+            <button
+              onClick={() => setShowNewCount(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              New Count
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowNewCount(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          New Count
-        </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Counts</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{counts.length}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <ClipboardList className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending Review</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-2">
-                {counts.filter(c => c.status === 'pending_review').length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-yellow-600" />
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Counts</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{counts.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <ClipboardList className="w-6 h-6 text-blue-600" />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">In Progress</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
-                {counts.filter(c => c.status === 'draft').length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-gray-600" />
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Pending Review</p>
+                <p className="text-3xl font-bold text-yellow-600 mt-2">
+                  {counts.filter(c => c.status === 'pending_review').length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-yellow-600" />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Completed</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                {counts.filter(c => c.status === 'completed').length}
-              </p>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">In Progress</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">
+                  {counts.filter(c => c.status === 'draft').length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Clock className="w-6 h-6 text-gray-600" />
+              </div>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-3xl font-bold text-green-600 mt-2">
+                  {counts.filter(c => c.status === 'completed').length}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
             </div>
           </div>
         </div>
@@ -617,32 +629,34 @@ export default function CountsPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : counts.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <ClipboardList className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No counts yet</h3>
-          <p className="text-gray-600 mb-4">Start your first physical inventory count</p>
-          <button
-            onClick={() => setShowNewCount(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <Plus className="w-5 h-5" />
-            Create First Count
-          </button>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-12 text-center">
+            <ClipboardList className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No counts yet</h3>
+            <p className="text-gray-600 mb-4">Start your first physical inventory count</p>
+            <button
+              onClick={() => setShowNewCount(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg"
+            >
+              <Plus className="w-5 h-5" />
+              Create First Count
+            </button>
+          </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-slate-100 border-b border-gray-200">
               <tr>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Type</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Items</th>
-                <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Items</th>
+                <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   <span className="text-green-600">+</span> / <span className="text-red-600">-</span>
                 </th>
-                <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Variance $</th>
-                <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Variance $</th>
+                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1029,7 +1043,7 @@ export default function CountsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900">
                     Physical Count - {new Date(activeCount.created_at).toLocaleDateString()}
@@ -1063,70 +1077,83 @@ export default function CountsPage() {
 
               {/* Summary Stats */}
               <div className="grid grid-cols-4 gap-4 mt-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500">Counted</p>
-                  <p className="text-xl font-bold text-gray-900">
-                    {countItems.filter(i => i.is_counted).length} / {countItems.length}
-                  </p>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-3">
+                    <p className="text-xs text-gray-500">Counted</p>
+                    <p className="text-xl font-bold text-gray-900 mt-1">
+                      {countItems.filter(i => i.is_counted).length} / {countItems.length}
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-green-50 rounded-lg p-3">
-                  <p className="text-xs text-green-600">Over (+)</p>
-                  <p className="text-xl font-bold text-green-600 flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4" />
-                    {positiveVariances}
-                  </p>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-3">
+                    <p className="text-xs text-green-600">Over (+)</p>
+                    <p className="text-xl font-bold text-green-600 flex items-center gap-1 mt-1">
+                      <TrendingUp className="w-4 h-4" />
+                      {positiveVariances}
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-red-50 rounded-lg p-3">
-                  <p className="text-xs text-red-600">Short (-)</p>
-                  <p className="text-xl font-bold text-red-600 flex items-center gap-1">
-                    <TrendingDown className="w-4 h-4" />
-                    {negativeVariances}
-                  </p>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-3">
+                    <p className="text-xs text-red-600">Short (-)</p>
+                    <p className="text-xl font-bold text-red-600 flex items-center gap-1 mt-1">
+                      <TrendingDown className="w-4 h-4" />
+                      {negativeVariances}
+                    </p>
+                  </div>
                 </div>
-                <div className={`rounded-lg p-3 ${totalVarianceValue >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <p className="text-xs text-gray-500">Total Variance</p>
-                  <p className={`text-xl font-bold ${totalVarianceValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {totalVarianceValue >= 0 ? '+' : ''}${totalVarianceValue.toFixed(2)}
-                  </p>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-3">
+                    <p className="text-xs text-gray-500">Total Variance</p>
+                    <p className={`text-xl font-bold mt-1 ${totalVarianceValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {totalVarianceValue >= 0 ? '+' : ''}${totalVarianceValue.toFixed(2)}
+                    </p>
+                  </div>
                 </div>
               </div>
 
               {/* Filters */}
-              <div className="flex gap-4 mt-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search products..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
-                  />
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-4">
+                <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
+                  <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filters</h3>
                 </div>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="all">All Categories</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                <div className="p-4 flex gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search products..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
             {/* Count Items Table */}
             <div className="flex-1 overflow-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 sticky top-0">
+                <thead className="bg-slate-100 border-b border-gray-200 sticky top-0">
                   <tr>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Product</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-32">Expected</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-32">Counted</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-28">Variance</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700 w-24">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 w-48">Notes</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">Expected</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">Counted</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">Variance</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider w-24">Status</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider w-48">Notes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1376,18 +1403,18 @@ export default function CountsPage() {
                       </div>
 
                       {/* Results Table */}
-                      <div className="max-h-64 overflow-auto border border-gray-200 rounded-lg">
+                      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                         <table className="w-full text-sm">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-slate-100 border-b border-gray-200">
                             <tr>
-                              <th className="text-left py-2 px-3">SKU</th>
-                              <th className="text-center py-2 px-3">Count</th>
-                              <th className="text-center py-2 px-3">Confidence</th>
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                              <th className="text-center py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Count</th>
+                              <th className="text-center py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Confidence</th>
                             </tr>
                           </thead>
                           <tbody>
                             {scanResults.items.map((item, idx) => (
-                              <tr key={idx} className="border-t border-gray-100">
+                              <tr key={idx} className="border-b border-gray-100">
                                 <td className="py-2 px-3 font-mono">{item.sku}</td>
                                 <td className="py-2 px-3 text-center font-medium">{item.countedQuantity}</td>
                                 <td className="py-2 px-3 text-center">

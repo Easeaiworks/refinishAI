@@ -278,35 +278,39 @@ export default function LaborRatesPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Insurance Labor Rates</h1>
-          <p className="text-gray-600 mt-1">
-            Configure labor rates by insurance company for accurate estimate calculations
-          </p>
-        </div>
-        {canManage && (
-          <div className="flex gap-2">
-            <button
-              onClick={openCreateInsurerModal}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Insurer
-            </button>
-            <button
-              onClick={openAddModal}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Configure Rates
-            </button>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Insurance Labor Rates</h1>
+              <p className="text-slate-300 mt-1 text-sm">
+                Configure labor rates by insurance company for accurate estimate calculations
+              </p>
+            </div>
+            {canManage && (
+              <div className="flex gap-2">
+                <button
+                  onClick={openCreateInsurerModal}
+                  className="bg-green-500 hover:bg-green-400 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  New Insurer
+                </button>
+                <button
+                  onClick={openAddModal}
+                  className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Configure Rates
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Alerts */}
@@ -325,7 +329,7 @@ export default function LaborRatesPage() {
 
       {/* Main Content */}
       {companyRates.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-12 text-center">
           <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
@@ -336,28 +340,28 @@ export default function LaborRatesPage() {
           {canManage && (
             <button
               onClick={openAddModal}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-lg"
             >
               Add Your First Insurance Company
             </button>
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-slate-100 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Insurance Company</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">DRP</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Body</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Refinish</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Mechanical</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Structural</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Aluminum</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Glass</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Insurance Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">DRP</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Body</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Refinish</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Mechanical</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Structural</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aluminum</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Glass</th>
                   {canManage && (
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                   )}
                 </tr>
               </thead>
@@ -447,24 +451,28 @@ export default function LaborRatesPage() {
       )}
 
       {/* Rate Guide */}
-      <div className="mt-6 bg-blue-50 rounded-lg p-4">
-        <h3 className="font-medium text-blue-900 mb-2">Labor Rate Types</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-blue-800">
-          <div><strong>Body:</strong> Standard body repair, R&I, R&R</div>
-          <div><strong>Refinish:</strong> Paint, prime, clear coat</div>
-          <div><strong>Mechanical:</strong> Suspension, drivetrain</div>
-          <div><strong>Structural:</strong> Frame, measuring, pulling</div>
-          <div><strong>Aluminum:</strong> Specialized aluminum work</div>
-          <div><strong>Glass:</strong> Windshield, window install</div>
+      <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gray-50 px-6 py-3.5 border-b border-gray-200">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Labor Rate Types</h2>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-700">
+            <div><strong>Body:</strong> Standard body repair, R&I, R&R</div>
+            <div><strong>Refinish:</strong> Paint, prime, clear coat</div>
+            <div><strong>Mechanical:</strong> Suspension, drivetrain</div>
+            <div><strong>Structural:</strong> Frame, measuring, pulling</div>
+            <div><strong>Aluminum:</strong> Specialized aluminum work</div>
+            <div><strong>Glass:</strong> Windshield, window install</div>
+          </div>
         </div>
       </div>
 
       {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">
                 {editingRates ? 'Edit Labor Rates' : 'Add Insurance Company'}
               </h2>
             </div>
@@ -480,7 +488,7 @@ export default function LaborRatesPage() {
                     <select
                       value={selectedInsurer}
                       onChange={(e) => setSelectedInsurer(e.target.value)}
-                      className="flex-1 border rounded-lg px-3 py-2"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
                     >
                       <option value="">Select an insurance company...</option>
                       {insuranceCompanies
@@ -496,7 +504,7 @@ export default function LaborRatesPage() {
                         closeModal()
                         openCreateInsurerModal()
                       }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 whitespace-nowrap"
+                      className="px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-lg whitespace-nowrap"
                     >
                       + New
                     </button>
@@ -535,7 +543,7 @@ export default function LaborRatesPage() {
                           type="text"
                           value={drpCode}
                           onChange={(e) => setDrpCode(e.target.value)}
-                          className="w-full border rounded-lg px-3 py-2"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           placeholder="Your DRP code"
                         />
                       </div>
@@ -548,7 +556,7 @@ export default function LaborRatesPage() {
                         type="text"
                         value={accountNumber}
                         onChange={(e) => setAccountNumber(e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         placeholder="Shop account #"
                       />
                     </div>
@@ -560,7 +568,7 @@ export default function LaborRatesPage() {
                         type="text"
                         value={contactName}
                         onChange={(e) => setContactName(e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         placeholder="Adjuster name"
                       />
                     </div>
@@ -572,7 +580,7 @@ export default function LaborRatesPage() {
                         type="text"
                         value={contactPhone}
                         onChange={(e) => setContactPhone(e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         placeholder="(555) 123-4567"
                       />
                     </div>
@@ -584,7 +592,7 @@ export default function LaborRatesPage() {
                         type="email"
                         value={contactEmail}
                         onChange={(e) => setContactEmail(e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         placeholder="adjuster@insurance.com"
                       />
                     </div>
@@ -632,7 +640,7 @@ export default function LaborRatesPage() {
               <button
                 onClick={handleSave}
                 disabled={saving || (!editingRates && !selectedInsurer)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-lg disabled:opacity-50"
               >
                 {saving ? 'Saving...' : 'Save Labor Rates'}
               </button>
@@ -644,9 +652,9 @@ export default function LaborRatesPage() {
       {/* Create New Insurance Company Modal */}
       {showCreateInsurerModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-bold">Create New Insurance Company</h2>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-xl max-w-md w-full">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Create New Insurance Company</h2>
               <p className="text-gray-600 text-sm mt-1">Add a new insurance company to configure rates for.</p>
             </div>
 
@@ -659,7 +667,7 @@ export default function LaborRatesPage() {
                   type="text"
                   value={newInsurerName}
                   onChange={(e) => setNewInsurerName(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="e.g., State Farm, GEICO"
                 />
               </div>
@@ -673,7 +681,7 @@ export default function LaborRatesPage() {
                   value={newInsurerCode}
                   onChange={(e) => setNewInsurerCode(e.target.value.toUpperCase())}
                   maxLength={6}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="e.g., STFM (auto-generated if blank)"
                 />
                 <p className="text-xs text-gray-500 mt-1">2-6 character code for quick identification</p>
@@ -688,7 +696,7 @@ export default function LaborRatesPage() {
                     type="tel"
                     value={newInsurerPhone}
                     onChange={(e) => setNewInsurerPhone(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     placeholder="(800) 555-0000"
                   />
                 </div>
@@ -700,7 +708,7 @@ export default function LaborRatesPage() {
                     type="email"
                     value={newInsurerEmail}
                     onChange={(e) => setNewInsurerEmail(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     placeholder="claims@insurance.com"
                   />
                 </div>
@@ -714,7 +722,7 @@ export default function LaborRatesPage() {
                   type="url"
                   value={newInsurerWebsite}
                   onChange={(e) => setNewInsurerWebsite(e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="https://www.insurance.com"
                 />
               </div>
@@ -730,7 +738,7 @@ export default function LaborRatesPage() {
               <button
                 onClick={handleCreateInsurer}
                 disabled={saving || !newInsurerName.trim()}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                className="bg-green-500 hover:bg-green-400 text-white px-4 py-2 rounded-lg disabled:opacity-50"
               >
                 {saving ? 'Creating...' : 'Create Insurance Company'}
               </button>

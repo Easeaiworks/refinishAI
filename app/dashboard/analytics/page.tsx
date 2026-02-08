@@ -263,7 +263,7 @@ export default function AnalyticsReportsPage() {
   function SortHeader({ field, label, align }: { field: SortField; label: string; align?: string }) {
     return (
       <th
-        className={`py-3 px-3 text-xs font-semibold text-gray-600 cursor-pointer hover:text-gray-900 select-none ${align === 'right' ? 'text-right' : 'text-left'}`}
+        className={`py-3 px-3 text-xs font-semibold text-gray-600 cursor-pointer hover:text-gray-900 select-none uppercase tracking-wider ${align === 'right' ? 'text-right' : 'text-left'}`}
         onClick={() => handleSort(field)}
       >
         <span className="inline-flex items-center gap-1">
@@ -300,33 +300,39 @@ export default function AnalyticsReportsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics & Reports</h1>
-          <p className="text-gray-600 mt-2">Projections, waste analysis, and inventory reporting</p>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Analytics & Reports</h1>
+              <p className="text-slate-300 mt-1 text-sm">Projections, waste analysis, and inventory reporting</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Top-Level Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit">
-        <button
-          onClick={() => setTopTab('analytics')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
-            topTab === 'analytics' ? 'bg-white shadow text-blue-700' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          Analytics & Projections
-        </button>
-        <button
-          onClick={() => setTopTab('reports')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${
-            topTab === 'reports' ? 'bg-white shadow text-blue-700' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          Inventory Reports
-        </button>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-gray-50 px-4 border-b border-gray-200 flex gap-0">
+          <button
+            onClick={() => setTopTab('analytics')}
+            className={`flex items-center gap-2 transition-colors ${
+              topTab === 'analytics' ? 'bg-white text-blue-700 font-semibold border-b-2 border-blue-600 px-4 py-3 text-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-4 py-3 text-sm font-medium'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Analytics & Projections
+          </button>
+          <button
+            onClick={() => setTopTab('reports')}
+            className={`flex items-center gap-2 transition-colors ${
+              topTab === 'reports' ? 'bg-white text-blue-700 font-semibold border-b-2 border-blue-600 px-4 py-3 text-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-4 py-3 text-sm font-medium'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Inventory Reports
+          </button>
+        </div>
       </div>
 
       {/* ═══════════════════════════════════════════ */}
@@ -358,7 +364,11 @@ export default function AnalyticsReportsPage() {
 
           {/* Confidence Score */}
           {projection && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-gray-50 px-6 py-3.5 border-b border-gray-200">
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Confidence Score</h2>
+              </div>
+              <div className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Zap className="w-5 h-5 text-blue-600" />
@@ -377,21 +387,22 @@ export default function AnalyticsReportsPage() {
                   <span className="font-bold text-gray-900">{projection.confidence}%</span>
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                {projection.confidence >= 70
-                  ? 'High confidence based on sufficient historical data'
-                  : projection.confidence >= 40
-                  ? 'Moderate confidence - more data will improve accuracy'
-                  : 'Low confidence - add more historical invoices and consumption records'
-                }
-              </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  {projection.confidence >= 70
+                    ? 'High confidence based on sufficient historical data'
+                    : projection.confidence >= 40
+                    ? 'Moderate confidence - more data will improve accuracy'
+                    : 'Low confidence - add more historical invoices and consumption records'
+                  }
+                </p>
+              </div>
             </div>
           )}
 
           {/* Key Metrics */}
           {projection && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Projected Jobs</p>
@@ -403,7 +414,7 @@ export default function AnalyticsReportsPage() {
                 </div>
                 <p className="text-sm text-gray-500 mt-3">Next {projectionPeriod} weeks</p>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Material Cost</p>
@@ -415,7 +426,7 @@ export default function AnalyticsReportsPage() {
                 </div>
                 <p className="text-sm text-gray-500 mt-3">Estimated spend</p>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Labor Cost</p>
@@ -427,7 +438,7 @@ export default function AnalyticsReportsPage() {
                 </div>
                 <p className="text-sm text-gray-500 mt-3">Estimated spend</p>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600">Total Projected</p>
@@ -445,12 +456,15 @@ export default function AnalyticsReportsPage() {
           {/* Category Breakdown + Waste Analysis */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {projection && projection.breakdown.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <PieChart className="w-5 h-5 text-blue-600" />
-                  Cost Breakdown by Category
-                </h2>
-                <div className="space-y-4">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="bg-gray-50 px-6 py-3.5 border-b border-gray-200">
+                  <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                    <PieChart className="w-5 h-5 text-blue-600" />
+                    Cost Breakdown by Category
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-4">
                   {projection.breakdown.map((item, index) => (
                     <div key={item.category} className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -476,16 +490,20 @@ export default function AnalyticsReportsPage() {
                       </div>
                     </div>
                   ))}
+                  </div>
                 </div>
               </div>
             )}
 
             {wasteAnalysis && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Target className="w-5 h-5 text-orange-600" />
-                  Waste Analysis
-                </h2>
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="bg-gray-50 px-6 py-3.5 border-b border-gray-200">
+                  <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                    <Target className="w-5 h-5 text-orange-600" />
+                    Waste Analysis
+                  </h2>
+                </div>
+                <div className="p-6">
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-orange-50 rounded-lg p-4">
                     <p className="text-sm text-orange-700">Waste Rate</p>
@@ -509,16 +527,17 @@ export default function AnalyticsReportsPage() {
                       </div>
                     </div>
                   ))}
-                </div>
-                <div className="border-t border-gray-200 pt-4">
-                  <p className="text-sm font-medium text-gray-700 mb-3">6-Month Waste Trend</p>
-                  <div className="flex items-end justify-between h-24 gap-2">
-                    {wasteAnalysis.trends.map((trend) => (
-                      <div key={trend.month} className="flex-1 flex flex-col items-center">
-                        <div className="w-full bg-orange-200 rounded-t" style={{ height: `${trend.wastePercent * 4}px` }} />
-                        <p className="text-xs text-gray-500 mt-1">{trend.month}</p>
-                      </div>
-                    ))}
+                  </div>
+                  <div className="border-t border-gray-200 pt-4">
+                    <p className="text-sm font-medium text-gray-700 mb-3">6-Month Waste Trend</p>
+                    <div className="flex items-end justify-between h-24 gap-2">
+                      {wasteAnalysis.trends.map((trend) => (
+                        <div key={trend.month} className="flex-1 flex flex-col items-center">
+                          <div className="w-full bg-orange-200 rounded-t" style={{ height: `${trend.wastePercent * 4}px` }} />
+                          <p className="text-xs text-gray-500 mt-1">{trend.month}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -527,12 +546,15 @@ export default function AnalyticsReportsPage() {
 
           {/* AI Recommendations */}
           {projection && projection.recommendations.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Lightbulb className="w-5 h-5 text-yellow-500" />
-                AI Recommendations
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-gray-50 px-6 py-3.5 border-b border-gray-200">
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-yellow-500" />
+                  AI Recommendations
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {projection.recommendations.map((rec, index) => (
                   <div key={index} className={`p-4 rounded-lg border ${getPriorityColor(rec.priority)}`}>
                     <div className="flex items-start gap-3">
@@ -555,24 +577,28 @@ export default function AnalyticsReportsPage() {
                 ))}
               </div>
             </div>
+            </div>
           )}
 
           {/* Top Consumption Patterns */}
           {patterns.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-purple-600" />
-                Top Products by Consumption
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Product</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Daily Avg</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Weekly Avg</th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Monthly Avg</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Peak Day</th>
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-gray-50 px-6 py-3.5 border-b border-gray-200">
+                <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                  Top Products by Consumption
+                </h2>
+              </div>
+              <div className="p-6">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-100 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</th>
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Daily Avg</th>
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Weekly Avg</th>
+                        <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Monthly Avg</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Peak Day</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -584,9 +610,10 @@ export default function AnalyticsReportsPage() {
                         <td className="py-3 px-4 text-right font-semibold text-gray-900">{pattern.avgMonthlyUsage}</td>
                         <td className="py-3 px-4 text-gray-600">{pattern.peakDay} ({pattern.peakUsage})</td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -611,7 +638,7 @@ export default function AnalyticsReportsPage() {
 
           {/* No Data */}
           {!projection && !loading && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-12 text-center">
               <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analytics Data Yet</h3>
               <p className="text-gray-600 mb-4">Upload invoices and track material consumption to generate cost projections and insights.</p>
@@ -657,7 +684,9 @@ export default function AnalyticsReportsPage() {
 
           {/* Filter Panel */}
           {showFilters && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="bg-gray-50 px-5 py-3 border-b border-gray-200"><h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filters</h3></div>
+              <div className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Start Date</label>
@@ -718,32 +747,33 @@ export default function AnalyticsReportsPage() {
                 </div>
               </div>
             </div>
+            </div>
           )}
 
           {/* Summary Cards */}
           {report && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
                 <div className="flex items-center gap-2 mb-1"><Package className="w-4 h-4 text-gray-400" /><p className="text-xs font-medium text-gray-500">Total SKUs</p></div>
                 <p className="text-2xl font-bold text-gray-900">{report.summary.totalSKUs}</p>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
                 <div className="flex items-center gap-2 mb-1"><DollarSign className="w-4 h-4 text-green-500" /><p className="text-xs font-medium text-gray-500">Inventory Value</p></div>
                 <p className="text-2xl font-bold text-gray-900">${report.summary.totalInventoryValue.toLocaleString()}</p>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
                 <div className="flex items-center gap-2 mb-1"><AlertTriangle className="w-4 h-4 text-red-500" /><p className="text-xs font-medium text-gray-500">Critical Items</p></div>
                 <p className="text-2xl font-bold text-red-600">{report.summary.criticalItems}</p>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
                 <div className="flex items-center gap-2 mb-1"><AlertTriangle className="w-4 h-4 text-amber-500" /><p className="text-xs font-medium text-gray-500">Low Stock</p></div>
                 <p className="text-2xl font-bold text-amber-600">{report.summary.lowStockItems}</p>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
                 <div className="flex items-center gap-2 mb-1"><ClipboardList className="w-4 h-4 text-blue-500" /><p className="text-xs font-medium text-gray-500">Counts Completed</p></div>
                 <p className="text-2xl font-bold text-gray-900">{report.summary.countsCompleted}</p>
               </div>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden p-4">
                 <div className="flex items-center gap-2 mb-1"><ArrowUpDown className="w-4 h-4 text-purple-500" /><p className="text-xs font-medium text-gray-500">Net Adjustments</p></div>
                 <p className={`text-2xl font-bold ${report.summary.netAdjustmentValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>${Math.abs(report.summary.netAdjustmentValue).toLocaleString()}</p>
               </div>
@@ -751,25 +781,23 @@ export default function AnalyticsReportsPage() {
           )}
 
           {/* Report Tabs */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="border-b border-gray-200">
-              <div className="flex">
-                {reportTabs.map(tab => {
-                  const Icon = tab.icon
-                  return (
-                    <button key={tab.id} onClick={() => setActiveReportTab(tab.id)}
-                      className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-                        activeReportTab === tab.id
-                          ? 'border-blue-600 text-blue-700 bg-blue-50'
-                          : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                      }`}
-                    >
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-gray-50 px-4 border-b border-gray-200 flex gap-0">
+              {reportTabs.map(tab => {
+                const Icon = tab.icon
+                return (
+                  <button key={tab.id} onClick={() => setActiveReportTab(tab.id)}
+                    className={`flex items-center gap-2 transition-colors ${
+                      activeReportTab === tab.id
+                        ? 'bg-white text-blue-700 font-semibold border-b-2 border-blue-600 px-5 py-3 text-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-5 py-3 text-sm font-medium'
+                    }`}
+                  >
                       <Icon className="w-4 h-4" />
                       {tab.label}
-                    </button>
-                  )
-                })}
-              </div>
+                  </button>
+                )
+              })}
             </div>
 
             <div className="p-0">
@@ -782,14 +810,14 @@ export default function AnalyticsReportsPage() {
                     <div className="text-center py-12"><Package className="w-12 h-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500">No inventory items match the current filters</p></div>
                   ) : (
                     <table className="w-full">
-                      <thead className="bg-gray-50 border-b border-gray-200">
+                      <thead className="bg-slate-100 border-b border-gray-200">
                         <tr>
                           <SortHeader field="sku" label="SKU" />
                           <SortHeader field="name" label="Product Name" />
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Category</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Manufacturer</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Category</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Manufacturer</th>
                           <SortHeader field="quantityOnHand" label="On Hand" align="right" />
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Unit Cost</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Unit Cost</th>
                           <SortHeader field="totalValue" label="Total Value" align="right" />
                           <SortHeader field="status" label="Status" />
                         </tr>
@@ -808,9 +836,9 @@ export default function AnalyticsReportsPage() {
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className="bg-gray-50 border-t border-gray-200">
+                      <tfoot className="bg-slate-100 border-t border-gray-200">
                         <tr>
-                          <td colSpan={5} className="py-3 px-3 text-sm font-semibold text-gray-700">Totals</td>
+                          <td colSpan={5} className="py-3 px-3 text-sm font-semibold text-gray-600 uppercase tracking-wider">Totals</td>
                           <td className="py-3 px-3 text-sm text-right font-bold text-gray-900">{report?.summary.totalQuantity.toLocaleString()}</td>
                           <td className="py-3 px-3"></td>
                           <td className="py-3 px-3 text-sm text-right font-bold text-gray-900">${report?.summary.totalInventoryValue.toLocaleString()}</td>
@@ -830,16 +858,16 @@ export default function AnalyticsReportsPage() {
                     <div className="text-center py-12"><BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500">No data available for comparison</p></div>
                   ) : (
                     <table className="w-full">
-                      <thead className="bg-gray-50 border-b border-gray-200">
+                      <thead className="bg-slate-100 border-b border-gray-200">
                         <tr>
                           <SortHeader field="sku" label="SKU" />
                           <SortHeader field="name" label="Product Name" />
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Current Qty</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Current Value</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Prior Yr Qty</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Prior Yr Value</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Current Qty</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Current Value</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Prior Yr Qty</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Prior Yr Value</th>
                           <SortHeader field="qtyChange" label="Qty Change" align="right" />
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Value Change</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Value Change</th>
                           <SortHeader field="pctChange" label="% Change" align="right" />
                         </tr>
                       </thead>
@@ -876,16 +904,16 @@ export default function AnalyticsReportsPage() {
                     <div className="text-center py-12"><ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500">No completed counts in this date range</p></div>
                   ) : (
                     <table className="w-full">
-                      <thead className="bg-gray-50 border-b border-gray-200">
+                      <thead className="bg-slate-100 border-b border-gray-200">
                         <tr>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Date</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Type</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Status</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Items Counted</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Variances</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right">Variance Value</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Counted By</th>
-                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left">Verified By</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Date</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Type</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Status</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Items Counted</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Variances</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Variance Value</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Counted By</th>
+                          <th className="py-3 px-3 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Verified By</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -940,15 +968,15 @@ export default function AnalyticsReportsPage() {
                               <table className="w-full">
                                 <thead>
                                   <tr className="border-b border-gray-200">
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-left">SKU</th>
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-left">Product</th>
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-left">Type</th>
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-right">Previous</th>
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-right">New</th>
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-right">Change</th>
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-right">Value</th>
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-left">Reason</th>
-                                    <th className="py-2 px-2 text-xs font-semibold text-gray-500 text-left">Date</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">SKU</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Product</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Type</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Previous</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">New</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Change</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-right uppercase tracking-wider">Value</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Reason</th>
+                                    <th className="py-2 px-2 text-xs font-semibold text-gray-600 text-left uppercase tracking-wider">Date</th>
                                   </tr>
                                 </thead>
                                 <tbody>
