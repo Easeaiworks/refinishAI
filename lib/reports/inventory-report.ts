@@ -81,7 +81,6 @@ export class InventoryReportService {
       .from('products')
       .select('*')
       .eq('company_id', companyId)
-      .eq('is_active', true)
       .order('name')
 
     if (filters.category) query = query.eq('category', filters.category)
@@ -91,7 +90,19 @@ export class InventoryReportService {
       query = query.or(`name.ilike.%${filters.itemSearch}%,sku.ilike.%${filters.itemSearch}%`)
     }
 
-    const { data: products } = await query
+    // Try with is_active filter; fall back without if column doesn't exist
+    let products: any[] | null = null
+    const { data: activeData, error } = await query.eq('is_active', true)
+    if (error) {
+      const { data: allData } = await this.supabase
+        .from('products')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('name')
+      products = allData
+    } else {
+      products = activeData
+    }
 
     // Fetch transactions for the period
     const { data: transactions } = await this.supabase
@@ -321,11 +332,24 @@ export class InventoryReportService {
     manufacturers: string[]
     productLines: string[]
   }> {
-    const { data: products } = await this.supabase
+    // Try with is_active filter first, fall back without it if column doesn't exist
+    let products: any[] | null = null
+    const { data: activeProducts, error } = await this.supabase
       .from('products')
       .select('category, manufacturer, product_line')
       .eq('company_id', companyId)
       .eq('is_active', true)
+
+    if (error) {
+      // is_active column may not exist — query without it
+      const { data: allProducts } = await this.supabase
+        .from('products')
+        .select('category, manufacturer, product_line')
+        .eq('company_id', companyId)
+      products = allProducts
+    } else {
+      products = activeProducts
+    }
 
     const categories = new Set<string>()
     const manufacturers = new Set<string>()
