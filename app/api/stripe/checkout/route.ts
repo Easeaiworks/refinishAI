@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
 import { getPlanById } from '@/lib/services/subscription-service'
+import { rateLimitResponse } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 checkout attempts per minute per IP
+    const rateLimited = await rateLimitResponse(request, {
+      maxRequests: 5,
+      windowSeconds: 60,
+      prefix: 'rl:checkout',
+    })
+    if (rateLimited) return rateLimited
+
     const body = await request.json()
     const { company_id, plan_id, billing_period } = body
 
