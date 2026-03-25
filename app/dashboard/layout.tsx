@@ -24,6 +24,26 @@ export default async function DashboardLayout({
     .eq('id', user.id)
     .single()
 
+  // Load accessible companies for company switcher
+  // Super admins see all companies; corporate users see parent + children; others see just their own
+  let accessibleCompanies: { id: string; name: string; city?: string }[] = []
+  if (profile?.role === 'super_admin') {
+    const { data: allCompanies } = await supabase
+      .from('companies')
+      .select('id, name, city')
+      .order('name')
+    accessibleCompanies = allCompanies || []
+  } else if (profile?.is_corporate_user && profile?.companies?.company_type === 'corporate') {
+    const { data: corpCompanies } = await supabase
+      .from('companies')
+      .select('id, name, city')
+      .or(`id.eq.${profile.company_id},parent_company_id.eq.${profile.company_id}`)
+      .order('name')
+    accessibleCompanies = corpCompanies || []
+  } else if (profile?.company_id) {
+    accessibleCompanies = [{ id: profile.company_id, name: profile.companies?.name || 'My Company', city: profile.companies?.city }]
+  }
+
   // Check subscription status for banner
   let subscriptionBanner: { type: 'warning' | 'error'; message: string } | null = null
   if (profile?.company_id) {
@@ -64,7 +84,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
-      <DashboardNav user={user} profile={profile} />
+      <DashboardNav user={user} profile={profile} companies={accessibleCompanies} />
       {subscriptionBanner && (
         <div
           className={`px-4 py-2.5 text-sm font-medium text-center ${

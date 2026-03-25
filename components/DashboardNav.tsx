@@ -25,13 +25,21 @@ import {
   CreditCard
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import CompanySwitcher from './CompanySwitcher'
+
+interface Company {
+  id: string
+  name: string
+  city?: string
+}
 
 interface DashboardNavProps {
   user: any
   profile: any
+  companies?: Company[]
 }
 
-export default function DashboardNav({ user, profile }: DashboardNavProps) {
+export default function DashboardNav({ user, profile, companies = [] }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -120,6 +128,15 @@ export default function DashboardNav({ user, profile }: DashboardNavProps) {
               </h1>
             </div>
           </Link>
+
+          {/* Company Switcher */}
+          {companies.length > 0 && (
+            <CompanySwitcher
+              currentCompanyId={profile?.company_id || ''}
+              currentCompanyName={profile?.companies?.name || 'No Company'}
+              companies={companies}
+            />
+          )}
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-0.5">
