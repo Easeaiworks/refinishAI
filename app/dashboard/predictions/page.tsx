@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   TrendingUp,
@@ -10,6 +10,8 @@ import {
   DollarSign,
   RefreshCw,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Clock,
   CheckCircle,
   Eye,
@@ -17,7 +19,10 @@ import {
   ShoppingCart,
   Sparkles,
   BarChart3,
-  ArrowRight
+  ArrowRight,
+  Filter,
+  Info,
+  Calculator
 } from 'lucide-react'
 
 interface Prediction {
@@ -55,6 +60,17 @@ interface InventoryStock {
   product_id: string
   quantity_on_hand: number
   reorder_point: number
+  reorder_quantity: number
+  product?: {
+    id: string
+    name: string
+    sku: string
+    category: string
+    unit_cost: number
+    unit_type: string
+    supplier: string
+    lead_time_days: number
+  }
 }
 
 interface ConsumptionStats {
@@ -72,6 +88,9 @@ export default function PredictionsPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [showMethodology, setShowMethodology] = useState(false)
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -88,10 +107,13 @@ export default function PredictionsPage() {
       .order('prediction_date', { ascending: false })
       .limit(10)
 
-    // Load stock levels
+    // Load stock levels with product details
     const { data: stockData } = await supabase
       .from('inventory_stock')
-      .select('*')
+      .select(`
+        *,
+        product:products(id, name, sku, category, unit_cost, unit_type, supplier, lead_time_days)
+      `)
 
     // Load consumption stats
     const { data: invoicesData, count: invoiceCount } = await supabase
@@ -132,6 +154,55 @@ export default function PredictionsPage() {
 
     if (data) setPredictionItems(data as any)
   }
+
+  // Get unique categories from prediction items
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>()
+    predictionItems.forEach(item => {
+      if (item.product?.category) cats.add(item.product.category)
+    })
+    return Array.from(cats).sort()
+  }, [predictionItems])
+
+  // Initialize selected categories when items load (default: core refinish categories)
+  useEffect(() => {
+    if (availableCategories.length > 0 && selectedCategories.size === 0) {
+      // Default to core refinish categories if they exist
+      const coreCategories = ['Paint', 'Primer', 'Clear Coat', 'Basecoat', 'Base Coat', 'Clearcoat']
+      const defaultSelected = availableCategories.filter(c =>
+        coreCategories.some(core => c.toLowerCase().includes(core.toLowerCase()))
+      )
+      // If no core categories found, show all
+      if (defaultSelected.length > 0) {
+        setSelectedCategories(new Set(defaultSelected))
+      } else {
+        setSelectedCategories(new Set(availableCategories))
+      }
+    }
+  }, [availableCategories])
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev => {
+      const next = new Set(prev)
+      if (next.has(category)) {
+        next.delete(category)
+      } else {
+        next.add(category)
+      }
+      return next
+    })
+  }
+
+  const selectAllCategories = () => setSelectedCategories(new Set(availableCategories))
+  const clearAllCategories = () => setSelectedCategories(new Set())
+
+  // Filter prediction items by selected categories
+  const filteredItems = useMemo(() => {
+    if (selectedCategories.size === 0) return []
+    return predictionItems.filter(item =>
+      item.product?.category && selectedCategories.has(item.product.category)
+    )
+  }, [predictionItems, selectedCategories])
 
   const generateNewPrediction = async () => {
     setGenerating(true)
@@ -174,7 +245,7 @@ export default function PredictionsPage() {
           product_id: stock.product_id,
           predicted_quantity: stock.reorder_quantity || 10,
           current_stock: stock.quantity_on_hand,
-          reasoning: `Stock level (${stock.quantity_on_hand}) is at or below reorder point (${stock.reorder_point})`,
+          reasoning: `Stock level (${stock.quantity_on_hand}) is at or below reorder point (${stock.reorder_point}). Reorder quantity: ${stock.reorder_quantity || 10}. Formula: Current Stock (${stock.quantity_on_hand}) <= Reorder Point (${stock.reorder_point}) triggers order of ${stock.reorder_quantity || 10} units.`,
           order_by_date: new Date(Date.now() + (stock.product?.lead_time_days || 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           is_overridden: false
         }))
@@ -184,6 +255,8 @@ export default function PredictionsPage() {
 
       // Reload data
       await loadData()
+      // Reset category filter so new data shows
+      setSelectedCategories(new Set())
       setShowGenerateModal(false)
     } catch (error) {
       console.error('Error generating prediction:', error)
@@ -198,12 +271,25 @@ export default function PredictionsPage() {
     loadData()
   }
 
-  // Calculate stats
-  const itemsToReorder = predictionItems.length
-  const totalOrderValue = predictionItems.reduce((sum, item) => {
+  // Calculate stats based on FILTERED items
+  const itemsToReorder = filteredItems.length
+  const totalOrderValue = filteredItems.reduce((sum, item) => {
     const qty = item.adjusted_quantity ?? item.predicted_quantity
     return sum + (qty * (item.product?.unit_cost || 0))
   }, 0)
+
+  // Category breakdown for the methodology section
+  const categoryBreakdown = useMemo(() => {
+    const breakdown: Record<string, { count: number; value: number }> = {}
+    filteredItems.forEach(item => {
+      const cat = item.product?.category || 'Unknown'
+      if (!breakdown[cat]) breakdown[cat] = { count: 0, value: 0 }
+      breakdown[cat].count++
+      const qty = item.adjusted_quantity ?? item.predicted_quantity
+      breakdown[cat].value += qty * (item.product?.unit_cost || 0)
+    })
+    return breakdown
+  }, [filteredItems])
 
   const hasHistoricalData = (consumptionStats?.totalInvoices || 0) >= 10
 
@@ -224,7 +310,7 @@ export default function PredictionsPage() {
         </button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - now reflect filtered data */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
@@ -236,7 +322,11 @@ export default function PredictionsPage() {
               <Package className="w-6 h-6 text-orange-600" />
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-4">Based on current stock levels</p>
+          <p className="text-sm text-gray-500 mt-4">
+            {selectedCategories.size < availableCategories.length
+              ? `Filtered (${selectedCategories.size} of ${availableCategories.length} categories)`
+              : 'Based on current stock levels'}
+          </p>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -284,6 +374,68 @@ export default function PredictionsPage() {
           <p className="text-sm text-gray-500 mt-4">Invoices analyzed</p>
         </div>
       </div>
+
+      {/* Category Filter Bar */}
+      {predictionItems.length > 0 && availableCategories.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-600" />
+              <h3 className="font-semibold text-gray-900">Filter by Product Category</h3>
+              <span className="text-sm text-gray-500">
+                ({selectedCategories.size} of {availableCategories.length} selected)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={selectAllCategories}
+                className="text-xs px-2 py-1 text-blue-600 hover:bg-blue-50 rounded"
+              >
+                Select All
+              </button>
+              <button
+                onClick={clearAllCategories}
+                className="text-xs px-2 py-1 text-gray-600 hover:bg-gray-50 rounded"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableCategories.map(category => {
+              const isSelected = selectedCategories.has(category)
+              const itemCount = predictionItems.filter(i => i.product?.category === category).length
+              return (
+                <button
+                  key={category}
+                  onClick={() => toggleCategory(category)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
+                    isSelected
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                    isSelected ? 'border-white bg-white' : 'border-gray-400'
+                  }`}>
+                    {isSelected && (
+                      <svg className="w-3 h-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  {category}
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    isSelected ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {itemCount}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       {loading ? (
@@ -413,10 +565,20 @@ export default function PredictionsPage() {
                 </div>
 
                 {/* Prediction Items Table */}
-                {predictionItems.length === 0 ? (
+                {filteredItems.length === 0 ? (
                   <div className="p-8 text-center">
-                    <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                    <p className="text-gray-600">All stock levels are healthy! No items need reordering.</p>
+                    {predictionItems.length === 0 ? (
+                      <>
+                        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                        <p className="text-gray-600">All stock levels are healthy! No items need reordering.</p>
+                      </>
+                    ) : (
+                      <>
+                        <Filter className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                        <p className="text-gray-600">No items match the selected category filters.</p>
+                        <p className="text-sm text-gray-500 mt-1">Try selecting additional categories above.</p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -424,7 +586,9 @@ export default function PredictionsPage() {
                       <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
                           <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Product</th>
+                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Category</th>
                           <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Current</th>
+                          <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Reorder Pt</th>
                           <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Order Qty</th>
                           <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Unit Cost</th>
                           <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Total</th>
@@ -432,20 +596,30 @@ export default function PredictionsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {predictionItems.map((item) => {
+                        {filteredItems.map((item) => {
                           const orderQty = item.adjusted_quantity ?? item.predicted_quantity
                           const lineTotal = orderQty * (item.product?.unit_cost || 0)
+                          // Find the stock record to show reorder point
+                          const stockRecord = stockLevels.find(s => s.product_id === item.product_id)
 
                           return (
                             <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
                               <td className="py-3 px-4">
                                 <p className="font-medium text-gray-900">{item.product?.name}</p>
-                                <p className="text-xs text-gray-500">{item.product?.sku} • {item.product?.supplier}</p>
+                                <p className="text-xs text-gray-500">{item.product?.sku} &bull; {item.product?.supplier}</p>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                  {item.product?.category}
+                                </span>
                               </td>
                               <td className="py-3 px-4 text-right">
                                 <span className={`font-medium ${item.current_stock <= 0 ? 'text-red-600' : 'text-orange-600'}`}>
                                   {item.current_stock} {item.product?.unit_type}
                                 </span>
+                              </td>
+                              <td className="py-3 px-4 text-right text-gray-500">
+                                {stockRecord?.reorder_point ?? '--'}
                               </td>
                               <td className="py-3 px-4 text-right">
                                 <span className="font-semibold text-gray-900">
@@ -475,8 +649,8 @@ export default function PredictionsPage() {
                       </tbody>
                       <tfoot className="bg-gray-50">
                         <tr>
-                          <td colSpan={4} className="py-3 px-4 text-right font-semibold text-gray-700">
-                            Total Order Value:
+                          <td colSpan={6} className="py-3 px-4 text-right font-semibold text-gray-700">
+                            Total Order Value ({filteredItems.length} items):
                           </td>
                           <td className="py-3 px-4 text-right font-bold text-gray-900">
                             ${totalOrderValue.toFixed(2)}
@@ -489,10 +663,10 @@ export default function PredictionsPage() {
                 )}
 
                 {/* Reasoning */}
-                {predictionItems.length > 0 && predictionItems[0].reasoning && (
+                {filteredItems.length > 0 && filteredItems[0].reasoning && (
                   <div className="p-4 bg-blue-50 border-t border-blue-100">
                     <p className="text-sm text-blue-800">
-                      <span className="font-medium">AI Reasoning:</span> {predictionItems[0].reasoning}
+                      <span className="font-medium">AI Reasoning:</span> {filteredItems[0].reasoning}
                     </p>
                   </div>
                 )}
@@ -501,6 +675,150 @@ export default function PredictionsPage() {
           </div>
         </div>
       )}
+
+      {/* Forecast Methodology / Calculation Transparency */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => setShowMethodology(!showMethodology)}
+          className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <Calculator className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div className="text-left">
+              <h2 className="text-lg font-bold text-gray-900">Forecast Calculation Methodology</h2>
+              <p className="text-sm text-gray-500">See exactly how we arrive at each order recommendation</p>
+            </div>
+          </div>
+          {showMethodology ? (
+            <ChevronUp className="w-5 h-5 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-500" />
+          )}
+        </button>
+
+        {showMethodology && (
+          <div className="border-t border-gray-200 p-6 space-y-6">
+            {/* Formula Explanation */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Reorder Decision Formula</h3>
+              <div className="bg-gray-50 rounded-lg p-4 font-mono text-sm space-y-2">
+                <p className="text-gray-700">
+                  <span className="text-blue-600 font-bold">IF</span> Current Stock &le; Reorder Point <span className="text-blue-600 font-bold">THEN</span> trigger reorder
+                </p>
+                <p className="text-gray-700">
+                  <span className="text-blue-600 font-bold">Order Quantity</span> = Configured Reorder Quantity for product
+                </p>
+                <p className="text-gray-700">
+                  <span className="text-blue-600 font-bold">Order By Date</span> = Today + Supplier Lead Time (days)
+                </p>
+                <p className="text-gray-700">
+                  <span className="text-blue-600 font-bold">Line Total</span> = Order Quantity &times; Unit Cost
+                </p>
+              </div>
+            </div>
+
+            {/* Step-by-step walkthrough */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">How to Manually Verify</h3>
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">1</div>
+                  <div>
+                    <p className="font-medium text-gray-900">Check Current Stock vs Reorder Point</p>
+                    <p className="text-sm text-gray-600">Go to Inventory &rarr; Stock Levels. For each product, compare the "Qty On Hand" column to the "Reorder Point" column. If Qty On Hand is at or below the Reorder Point, the product needs ordering.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">2</div>
+                  <div>
+                    <p className="font-medium text-gray-900">Determine Order Quantity</p>
+                    <p className="text-sm text-gray-600">The order quantity is taken from the "Reorder Qty" setting on each product's stock record. This is the standard replenishment amount configured for the product.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">3</div>
+                  <div>
+                    <p className="font-medium text-gray-900">Calculate the Line Total</p>
+                    <p className="text-sm text-gray-600">Multiply the Order Quantity by the product's Unit Cost. For example: 12 gallons &times; $89.50/gallon = $1,074.00</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">4</div>
+                  <div>
+                    <p className="font-medium text-gray-900">Determine the Order-By Date</p>
+                    <p className="text-sm text-gray-600">Add the supplier's lead time (in days) to today's date. If lead time is 7 days and today is March 25, order by April 1 to prevent stockout.</p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">5</div>
+                  <div>
+                    <p className="font-medium text-gray-900">Sum the Totals</p>
+                    <p className="text-sm text-gray-600">Add up all line totals to get the Estimated Order Value. The number of products flagged gives you "Products to Reorder".</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Category breakdown */}
+            {Object.keys(categoryBreakdown).length > 0 && (
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Current Forecast Breakdown by Category</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left py-2 px-4 font-semibold text-gray-700">Category</th>
+                        <th className="text-right py-2 px-4 font-semibold text-gray-700">Products</th>
+                        <th className="text-right py-2 px-4 font-semibold text-gray-700">Order Value</th>
+                        <th className="text-right py-2 px-4 font-semibold text-gray-700">% of Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(categoryBreakdown)
+                        .sort((a, b) => b[1].value - a[1].value)
+                        .map(([cat, data]) => (
+                        <tr key={cat} className="border-b border-gray-100">
+                          <td className="py-2 px-4 font-medium text-gray-900">{cat}</td>
+                          <td className="py-2 px-4 text-right text-gray-600">{data.count}</td>
+                          <td className="py-2 px-4 text-right text-gray-900">${data.value.toFixed(2)}</td>
+                          <td className="py-2 px-4 text-right text-gray-600">
+                            {totalOrderValue > 0 ? ((data.value / totalOrderValue) * 100).toFixed(1) : 0}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50 font-semibold">
+                      <tr>
+                        <td className="py-2 px-4 text-gray-900">Total</td>
+                        <td className="py-2 px-4 text-right text-gray-900">{filteredItems.length}</td>
+                        <td className="py-2 px-4 text-right text-gray-900">${totalOrderValue.toFixed(2)}</td>
+                        <td className="py-2 px-4 text-right text-gray-900">100%</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Data sources note */}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium mb-1">Data Sources</p>
+                  <p>
+                    This forecast uses data from the <strong>Inventory Stock</strong> table (current quantities, reorder points, reorder quantities)
+                    and the <strong>Products</strong> catalog (unit costs, lead times, categories). As historical consumption data grows
+                    from completed invoices, the forecast will incorporate usage velocity and seasonal trends to improve accuracy.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* How It Works Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -582,7 +900,7 @@ export default function PredictionsPage() {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600">
                     A 2-week forecast will be generated with recommended reorder quantities for all products
-                    that are at or below their reorder points.
+                    that are at or below their reorder points. Use the category filter to focus on specific product types.
                   </p>
                 </div>
               </div>
