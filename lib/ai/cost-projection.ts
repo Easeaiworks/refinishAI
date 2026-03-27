@@ -115,7 +115,7 @@ export class CostProjectionEngine {
         return sum + inv.material_cost
       }
       // Fallback: estimate materials as 35% of total (industry average)
-      return sum + (inv.total_amount * 0.35)
+      return sum + ((inv.total_amount || 0) * 0.35)
     }, 0) / Math.max(invoices.length, 1)
 
     const avgLaborCostPerJob = invoices.reduce((sum, inv) => {
@@ -126,7 +126,7 @@ export class CostProjectionEngine {
         return sum + inv.labor_cost
       }
       // Fallback: estimate labor as 50% of total (industry average)
-      return sum + (inv.total_amount * 0.50)
+      return sum + ((inv.total_amount || 0) * 0.50)
     }, 0) / Math.max(invoices.length, 1)
 
     // Estimate jobs for projection period
@@ -181,9 +181,14 @@ export class CostProjectionEngine {
     const products = await this.getProducts(companyId)
     const invoices = await this.getHistoricalInvoices(companyId, periodDays)
 
-    // Calculate totals
-    const totalMaterialCost = consumption.reduce((sum, c) =>
-      sum + (c.quantity_used * (c.cost_per_unit || 0)), 0)
+    // Calculate totals - use actual_quantity from consumption_history schema
+    const totalMaterialCost = consumption.reduce((sum, c) => {
+      const qty = c.actual_quantity || c.quantity_used || 0
+      const cost = c.cost_per_unit || 0
+      const product = products.find(p => p.id === c.product_id)
+      const unitCost = cost || product?.unit_cost || product?.cost || 0
+      return sum + (qty * unitCost)
+    }, 0)
 
     // Calculate waste by category
     const categoryMap = new Map<string, { expected: number; actual: number; cost: number }>()
@@ -195,14 +200,15 @@ export class CostProjectionEngine {
       const category = product.category || 'Other'
       const existing = categoryMap.get(category) || { expected: 0, actual: 0, cost: 0 }
 
-      // Expected usage based on coverage calculations
-      const expectedUsage = c.quantity_used * (1 - (product.waste_factor || 0.15))
-      const actualUsage = c.quantity_used
+      // Use estimated_quantity as expected, actual_quantity as actual (from our schema)
+      const expectedUsage = c.estimated_quantity || c.quantity_used || 0
+      const actualUsage = c.actual_quantity || c.quantity_used || 0
+      const unitCost = c.cost_per_unit || product.unit_cost || product.cost || 0
 
       categoryMap.set(category, {
         expected: existing.expected + expectedUsage,
         actual: existing.actual + actualUsage,
-        cost: existing.cost + (actualUsage * (c.cost_per_unit || product.unit_cost || 0))
+        cost: existing.cost + (actualUsage * unitCost)
       })
     }
 
@@ -276,8 +282,8 @@ export class CostProjectionEngine {
 
     for (const c of consumption) {
       const existing = productConsumption.get(c.product_id) || { dates: [], quantities: [] }
-      existing.dates.push(new Date(c.transaction_date || c.created_at))
-      existing.quantities.push(c.quantity_used)
+      existing.dates.push(new Date(c.completion_date || c.transaction_date || c.created_at))
+      existing.quantities.push(c.actual_quantity || c.quantity_used || 0)
       productConsumption.set(c.product_id, existing)
     }
 
@@ -383,13 +389,20 @@ export class CostProjectionEngine {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
+    // Try completion_date first (our schema), fall back to created_at
     const { data } = await this.supabase
       .from('consumption_history')
-      .select('*')
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: false })
+      .select('*, invoice:invoices!invoice_id(company_id)')
+      .gte('completion_date', startDate.toISOString().split('T')[0])
+      .order('completion_date', { ascending: false })
 
-    return data || []
+    // Filter to company's invoices if join worked
+    const filtered = data?.filter(c => {
+      if (!c.invoice) return true // If no join, include all
+      return c.invoice.company_id === companyId
+    }) || []
+
+    return filtered
   }
 
   private async getProducts(companyId: string) {
@@ -423,9 +436,11 @@ export class CostProjectionEngine {
 
       const category = product.category || 'Other'
       const existing = categoryMap.get(category) || { qty: 0, cost: 0 }
+      const qty = c.actual_quantity || c.quantity_used || 0
+      const unitCost = c.cost_per_unit || product.unit_cost || product.cost || 0
       categoryMap.set(category, {
-        qty: existing.qty + c.quantity_used,
-        cost: existing.cost + (c.quantity_used * (c.cost_per_unit || product.unit_cost || 0))
+        qty: existing.qty + qty,
+        cost: existing.cost + (qty * unitCost)
       })
     }
 
